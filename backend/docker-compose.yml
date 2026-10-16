@@ -1,0 +1,67 @@
+# NOTE: the company's TARGET database (the one this backend analyzes) is
+# NOT part of this compose file — it is an existing external database you
+# point TARGET_DB_URL at. This file only stands up:
+#   - backend:   this FastAPI service
+#   - app-db:    this backend's OWN read/write operational database
+#                (users, chat history, cached docs, alerts)
+#   - ollama:    local LLM + embedding model serving
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      APP_DB_URL: postgresql+psycopg2://app_user:app_password@app-db:5432/rag_backend_app
+      OLLAMA_BASE_URL: http://ollama:11434
+    volumes:
+      - ./app:/app/app
+      - ./.env:/app/.env:ro
+      - vector_db_data:/app/vector_db
+      - backend_logs:/app/logs
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      app-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  app-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_password
+      POSTGRES_DB: rag_backend_app
+    volumes:
+      - app_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d rag_backend_app"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    # After first start, pull the models referenced in .env, e.g.:
+    #   docker compose exec ollama ollama pull llama3.1
+    #   docker compose exec ollama ollama pull nomic-embed-text
+
+volumes:
+  app_db_data:
+  vector_db_data:
+  backend_logs:
+  ollama_data:

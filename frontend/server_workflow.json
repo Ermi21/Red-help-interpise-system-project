@@ -1,0 +1,283 @@
+{
+  "name": "server",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sre-chatbot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2416,
+        960
+      ],
+      "id": "d84c656f-8f28-42f2-8f33-8ad752e54fcd",
+      "name": "SRE Chatbot",
+      "webhookId": "962d5baa-2a7e-4831-9a2e-7bf70a0be51f"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nlet body = input.body;\n\nif (typeof body === 'string') {\n    try {\n        body = JSON.parse(body);\n    } catch (e) {\n        if (body.includes('=')) {\n            try {\n                const params = {};\n                body.split('&').forEach(part => {\n                    const [k, v] = part.split('=');\n                    params[decodeURIComponent(k)] = decodeURIComponent(v);\n                });\n                body = params;\n            } catch (err) {}\n        }\n    }\n}\n\nconst userQuestion = body?.question || input.query?.question || input.question || '';\nconst question = userQuestion || 'Provide a health and security report for all servers';\n\n// Detect query intent\nfunction detectIntent(text) {\n    const lowerText = text.toLowerCase();\n    if (lowerText.includes('security') || lowerText.includes('threat') || lowerText.includes('risk')) {\n        return 'SECURITY_REPORT';\n    }\n    return 'HEALTH_REPORT';\n}\n\nconst reqServer = body?.server_name || input.query?.server_name || input.server_name;\nconst serverName = reqServer || 'all';\n\nreturn [{\n    json: {\n        original_question: question,\n        intent: detectIntent(question),\n        server_name: serverName,\n        timestamp: new Date().toISOString()\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2208,
+        960
+      ],
+      "id": "5daa55da-45ca-432a-9191-5e3cbe5e95b3",
+      "name": "Process Question"
+    },
+    {
+      "parameters": {
+        "url": "http://host.docker.internal:9900/metrics",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -2000,
+        960
+      ],
+      "id": "b61ba30c-d63a-4030-a665-f058bbd19fcd",
+      "name": "Generate Server Telemetry"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO metrics_history (\n    id, server_name, status, timestamp,\n    cpu_usage, memory_usage, disk_usage, network_rx_mb, network_tx_mb, temperature_c, uptime, processes, health_status, health_emoji, summary\n) VALUES (\n    '{{ $json.id }}',\n    '{{ $json.server_name }}',\n    '{{ $json.status }}',\n    '{{ $json.timestamp }}',\n    {{ $json.cpu.usage_percent }},\n    {{ $json.memory.usage_percent }},\n    {{ $json.disk.usage_percent }},\n    0,\n    0,\n    {{ $json.temperature_c }},\n    '{{ $json.uptime }}',\n    {{ $json.processes }},\n    '{{ $json.health_status }}',\n    '{{ $json.health_emoji }}',\n    '{{ $json.summary }}'\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1792,
+        960
+      ],
+      "id": "9fdf9056-e293-4559-b286-d3453709a54f",
+      "name": "Store in PostgreSQL",
+      "credentials": {
+        "postgres": {
+          "id": "5SLKrUbihN1Jvbgl",
+          "name": "Red_db"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO security_metrics (\n    id, server_name, timestamp,\n    failed_logins, successful_logins, firewall_events,\n    blocked_ips, suspicious_users, security_alerts,\n    threat_level, authentication_activity, risk_score\n) VALUES (\n    '{{ $json.id }}',\n    '{{ $json.server_name }}',\n    '{{ $json.timestamp }}',\n    0,\n    10,\n    0,\n    0,\n    0,\n    0,\n    '{{ $json.security.threat_level }}',\n    10,\n    {{ $json.security.risk_score }}\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1584,
+        960
+      ],
+      "id": "38052355-a1a9-4549-959a-2164331791ff",
+      "name": "Store Security Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "5SLKrUbihN1Jvbgl",
+          "name": "Red_db"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    h.server_name,\n    h.status,\n    h.cpu_usage,\n    h.memory_usage,\n    h.disk_usage,\n    h.temperature_c,\n    h.uptime,\n    h.health_status,\n    h.health_emoji,\n    h.summary,\n    h.timestamp AS health_timestamp\nFROM metrics_history h\nORDER BY h.timestamp DESC\nLIMIT 10;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -1376,
+        960
+      ],
+      "id": "9591b46c-f8cd-476b-bb4f-b1d33d057bca",
+      "name": "Query Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "5SLKrUbihN1Jvbgl",
+          "name": "Red_db"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### LIVE SERVER METRICS\n{{ JSON.stringify($json) }}\n\nYou are ServerGuard AI, an enterprise Server Monitoring and Security Assistant.\nProvide a clean SRE dashboard summary report based on these server metrics.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1168,
+        960
+      ],
+      "id": "0956dd76-6cc4-47a0-a0c8-ead25d598de2",
+      "name": "Generate Report"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1312,
+        1168
+      ],
+      "id": "ad92c364-edb7-483c-b108-6bb30241a1d9",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "TedRkhNg5IrBYR9v",
+          "name": "groq_red"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        -640,
+        960
+      ],
+      "id": "71b7e45c-6bab-4df7-83a5-06eb40a4f2b8",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalQuestion = $('Process Question').first().json.original_question || 'Health Report';\n\n// If the query is from the frontend telemetry poll, return the raw telemetry array as the report\nif (originalQuestion.includes('Show Server Health Report') || originalQuestion.includes('telemetry')) {\n    const rawTelemetry = $('Generate Server Telemetry').all().map(item => item.json);\n    return [{\n        json: {\n            success: true,\n            timestamp: new Date().toISOString(),\n            question: originalQuestion,\n            report: rawTelemetry,\n            report_length: rawTelemetry.length,\n            status: 'COMPLETE'\n        }\n    }];\n}\n\n// Otherwise, return the conversational LLM report\nconst aiResponse = $input.first().json.output || $input.first().json;\nconst response = {\n    success: true,\n    timestamp: new Date().toISOString(),\n    question: originalQuestion,\n    report: aiResponse,\n    report_length: JSON.stringify(aiResponse).length,\n    status: 'COMPLETE'\n};\n\nreturn [{ json: response }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        960
+      ],
+      "id": "f791e175-519f-4d0e-b028-9c72dd58feea",
+      "name": "Generate Report1"
+    }
+  ],
+  "connections": {
+    "SRE Chatbot": {
+      "main": [
+        [
+          {
+            "node": "Process Question",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Question": {
+      "main": [
+        [
+          {
+            "node": "Generate Server Telemetry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Server Telemetry": {
+      "main": [
+        [
+          {
+            "node": "Store in PostgreSQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store in PostgreSQL": {
+      "main": [
+        [
+          {
+            "node": "Store Security Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Security Metrics": {
+      "main": [
+        [
+          {
+            "node": "Query Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Metrics": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Generate Report1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "staticData": {},
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
