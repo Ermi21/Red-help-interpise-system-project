@@ -58,11 +58,55 @@ class RAGResult:
     sources: list[dict] = field(default_factory=list)
 
 
-def _llm_chat(messages: list, temperature: float = 0.1) -> str:
-    """Invoke Groq LLM with chat messages, returning trimmed content."""
+def _llm_chat(messages: list, temperature: float = 0.1, call_type: str = "chat") -> str:
+    """Invoke Groq LLM with chat messages, returning trimmed content.
+    Records token usage to the llm_usage table."""
+    import time as _t
+    start = _t.monotonic()
     llm = get_chat_llm(temperature=temperature)
-    response = llm.invoke(messages)
-    return (response.content or "").strip()
+    status = "success"
+    error_msg = None
+    content = ""
+    try:
+        response = llm.invoke(messages)
+        content = (response.content or "").strip()
+    except Exception as exc:
+        status = "error"
+        error_msg = str(exc)[:255]
+        raise
+    finally:
+        latency = round((_t.monotonic() - start) * 1000, 1)
+        _record_llm_usage(
+            call_type=call_type,
+            latency_ms=latency,
+            status=status,
+            error_message=error_msg,
+        )
+    return content
+
+
+def _record_llm_usage(
+    call_type: str,
+    latency_ms: float,
+    status: str = "success",
+    error_message: str | None = None,
+) -> None:
+    """Fire-and-forget: persist LLM call metadata without blocking the pipeline."""
+    try:
+        from app.database.connection import app_session
+        from app.models.llm_usage import LlmUsage
+        from app.config.settings import get_settings
+        settings = get_settings()
+        with app_session() as session:
+            session.add(LlmUsage(
+                call_type=call_type,
+                model=settings.groq_chat_model or "unknown",
+                latency_ms=latency_ms,
+                status=status,
+                error_message=error_message,
+            ))
+    except Exception:
+        pass  # never break the pipeline over telemetry
 
 
 def _get_live_schema_summary() -> tuple[list[str], str, str]:
@@ -200,7 +244,7 @@ def _handle_database_rag(
     # ── 4. ROUTE the question ──────────────────────────────────────────────────
     try:
         router_prompt = build_router_prompt(question)
-        route = _llm_chat([HumanMessage(content=router_prompt)], temperature=0.0).upper().strip()
+        route = _llm_chat([HumanMessage(content=router_prompt)], temperature=0.0, call_type="router").upper().strip()
         # Normalize: extract the first word
         route = route.split()[0] if route else "DATA"
         if route not in {"SCHEMA", "DATA", "REFUSE"}:
@@ -268,6 +312,7 @@ def _handle_database_rag(
         raw_sql = _llm_chat(
             history_msgs + [HumanMessage(content=sql_prompt)],
             temperature=0.0,
+            call_type="text_to_sql",
         ).strip()
 
         # Strip markdown fences if LLM wrapped the SQL anyway
@@ -312,6 +357,7 @@ def _handle_database_rag(
         answer = _llm_chat(
             history_msgs + [HumanMessage(content=answer_prompt)],
             temperature=0.1,
+            call_type="synthesize",
         )
     except Exception as exc:
         logger.warning("Groq synthesis fallback: %s", exc)

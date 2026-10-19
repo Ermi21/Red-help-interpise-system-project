@@ -15,35 +15,48 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(
+def login(
+    payload: LoginRequest,
     request: Request,
     db: Session = Depends(get_db_session),
 ):
-    username = None
-    password = None
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        try:
-            body = await request.json()
-            username = body.get("username")
-            password = body.get("password")
-        except Exception:
-            pass
-    else:
-        try:
-            form = await request.form()
-            username = form.get("username")
-            password = form.get("password")
-        except Exception:
-            pass
+    username = payload.username.strip() if payload.username else ""
+    password = payload.password or ""
 
     if not username or not password:
         raise AuthenticationError("Invalid username or password.")
 
     users = UserRepository(db)
     user = users.get_by_username(username) or users.get_by_email(username)
+
+    # Resolve client metadata for audit log (never raise on failure)
+    ip  = request.client.host if request.client else None
+    ua  = request.headers.get("user-agent", "")
+    device = "mobile" if any(k in ua.lower() for k in ("mobile", "android", "iphone")) else "desktop"
+
     if user is None or not user.is_active or not verify_password(password, user.hashed_password):
+        # Record failed login event
+        try:
+            _record_login(
+                db=db,
+                username=username or "",
+                user_id=user.id if user else None,
+                success=False,
+                ip=ip,
+                ua=ua,
+                device=device,
+                reason="invalid_credentials" if user else "user_not_found",
+            )
+        except Exception:
+            pass
         raise AuthenticationError("Invalid username or password.")
+
+    # Record successful login
+    try:
+        _record_login(db=db, username=user.username, user_id=user.id,
+                      success=True, ip=ip, ua=ua, device=device)
+    except Exception:
+        pass
 
     settings = get_settings()
     token = create_access_token(subject=user.id, role=user.role, extra_claims={"username": user.username})
@@ -100,3 +113,46 @@ def refresh_token(current: CurrentUser = Depends(get_current_user)):
         access_token=token,
         expires_in_minutes=settings.jwt_access_token_expire_minutes,
     )
+
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+def _record_login(
+    db: Session,
+    username: str,
+    user_id: str | None,
+    success: bool,
+    ip: str | None,
+    ua: str,
+    device: str,
+    reason: str | None = None,
+) -> None:
+    """Persist a login event and publish a security notification on failure."""
+    try:
+        from app.models.login_event import LoginEvent
+        db.add(LoginEvent(
+            username=username,
+            user_id=user_id,
+            success=success,
+            ip_address=ip,
+            user_agent=ua[:512] if ua else None,
+            device_type=device,
+            failure_reason=reason,
+        ))
+        db.flush()   # write within the existing transaction
+    except Exception as exc:
+        # Never let audit logging break the auth flow
+        import logging
+        logging.getLogger(__name__).warning("Could not record login event: %s", exc)
+
+    if not success:
+        from app.core.event_bus import publish_event_sync
+        publish_event_sync(
+            source="security",
+            event_type="login_failed",
+            severity="warning",
+            title=f"Failed login: {username}",
+            message=f"Authentication failed for '{username}' from IP {ip or 'unknown'}.",
+            metadata={"username": username, "ip_address": ip, "reason": reason, "user_agent": ua[:200] if ua else ""},
+            user_id=user_id,
+        )

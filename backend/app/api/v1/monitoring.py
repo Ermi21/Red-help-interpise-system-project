@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy import text
 
 from app.api.deps import CurrentUser, get_current_user
+from app.cache.decorators import redis_cached
 from app.database.connection import get_app_engine, get_target_engine
 from app.utils.logger import get_logger
 
@@ -71,6 +72,7 @@ def _safe_query_all(engine, sql: str, params: dict | None = None):
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/database")
+@redis_cached(key_prefix="monitoring:database:metrics", ttl=30)
 def get_database_metrics(_: CurrentUser = Depends(get_current_user)):
     """
     Returns real live metrics from the target (Supabase) database.
@@ -230,6 +232,7 @@ def get_database_metrics(_: CurrentUser = Depends(get_current_user)):
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/server")
+@redis_cached(key_prefix="monitoring:server:metrics", ttl=15)
 def get_server_metrics(_: CurrentUser = Depends(get_current_user)):
     """
     Returns real live metrics from the server running this backend service.
@@ -341,6 +344,7 @@ def get_server_metrics(_: CurrentUser = Depends(get_current_user)):
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/security")
+@redis_cached(key_prefix="monitoring:security:events", ttl=60)
 def get_security_events(_: CurrentUser = Depends(get_current_user)):
     """
     Returns real security events from the application's own audit trail.
@@ -475,6 +479,7 @@ def get_security_events(_: CurrentUser = Depends(get_current_user)):
 # ─────────────────────────────────────────────────────────────
 
 @router.get("/notifications")
+@redis_cached(key_prefix="monitoring:notifications", ttl=30)
 def get_notifications(_: CurrentUser = Depends(get_current_user)):
     """
     Returns a unified list of system notifications sourced entirely from
@@ -492,15 +497,16 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
     notifications: list[dict] = []
     now_iso = datetime.now(timezone.utc).isoformat()
 
-    # 1. Real alerts from the app database
+    # 1. Real alerts and event pipeline from the app database
     try:
         engine = get_app_engine()
         with engine.connect() as conn:
+            # Alerts table
             rows = conn.execute(text(
-                """SELECT id, title, description, severity, category, created_at
+                """SELECT id, title, description, severity, category, recommended_action, created_at
                    FROM alerts
                    ORDER BY created_at DESC
-                   LIMIT 30"""
+                   LIMIT 20"""
             )).mappings().all()
             for r in rows:
                 r = dict(r)
@@ -512,17 +518,131 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
                     "title": title,
                     "message": r.get("description") or title,
                     "type": "critical" if sev == "critical" else
-                            "warning" if sev == "high" else "info",
+                            "warning" if sev in ("high", "medium") else "info",
                     "severity": sev,
-                    "category": r.get("category", "system"),
+                    "category": (r.get("category") or "System").capitalize(),
                     "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
                     "is_read": False,
                     "source": "Alert Engine",
+                    "mitigation": r.get("recommended_action") or "Check operational telemetry.",
+                    "affected": "ERP Infrastructure",
+                })
+
+            # Event bus notifications table
+            pipe_rows = conn.execute(text(
+                """SELECT id, source, event_type, severity, title, message, created_at
+                   FROM notifications
+                   WHERE status != 'resolved'
+                   ORDER BY created_at DESC
+                   LIMIT 20"""
+            )).mappings().all()
+            for pr in pipe_rows:
+                pr = dict(pr)
+                sev = (pr.get("severity") or "info").lower()
+                ts = pr.get("created_at")
+                notifications.append({
+                    "id": f"event_{pr.get('id')}",
+                    "title": pr.get("title") or "System Alert",
+                    "message": pr.get("message") or "",
+                    "type": "critical" if sev == "critical" else "warning" if sev in ("warning", "high") else "info",
+                    "severity": sev,
+                    "category": (pr.get("event_type") or "System Event").replace("_", " ").title(),
+                    "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
+                    "is_read": False,
+                    "source": f"{pr.get('source', 'System').capitalize()} Monitor",
+                    "mitigation": "Review event stream details in monitoring center.",
+                    "affected": f"{pr.get('source', 'System').capitalize()} Component",
                 })
     except Exception as exc:
         logger.debug("Notifications: alerts query skipped: %s", exc)
 
-    # 2. Server health notification (from psutil — no DB round-trip)
+    # 2. Supabase Target DB Admin Notifications & Audit Logs
+    try:
+        t_engine = get_target_engine()
+        with t_engine.connect() as conn:
+            sb_rows = conn.execute(text(
+                """SELECT id, message, status, audience_type, created_at, failure_reason
+                   FROM public.notifications
+                   ORDER BY created_at DESC
+                   LIMIT 40"""
+            )).mappings().all()
+
+            for r in sb_rows:
+                r = dict(r)
+                msg = r.get("message") or ""
+                msg_lower = msg.lower()
+                st = (r.get("status") or "").upper()
+                fail_reason = r.get("failure_reason")
+                ts = r.get("created_at")
+
+                if "suspended" in msg_lower or "blocked" in msg_lower or "locked" in msg_lower or st == "FAILED" or fail_reason:
+                    sev = "critical"
+                    cat = "Account Suspension"
+                    title = "Critical Admin Action: User Suspended"
+                    mitigation = "Review administrator suspension reason and verify user audit logs."
+                elif "reactivated" in msg_lower or "approved" in msg_lower:
+                    sev = "low"
+                    cat = "Registration Approval"
+                    title = "Admin Action: Registration Approved"
+                    mitigation = "No action required. Account active."
+                elif "pending" in msg_lower or "review" in msg_lower:
+                    sev = "medium"
+                    cat = "Registration Review"
+                    title = "Review Required: Registration Pending"
+                    mitigation = "Verify identity documents in administrative dashboard."
+                else:
+                    sev = "medium"
+                    cat = "Administrative Notification"
+                    title = "Supabase Admin Broadcast"
+                    mitigation = "Review notification dispatch status in Supabase."
+
+                notifications.append({
+                    "id": f"supabase_{r.get('id')}",
+                    "title": title,
+                    "message": msg,
+                    "type": "critical" if sev == "critical" else "warning" if sev == "medium" else "info",
+                    "severity": sev,
+                    "category": cat,
+                    "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
+                    "is_read": False,
+                    "source": "Supabase Admin",
+                    "mitigation": mitigation,
+                    "affected": f"Audience: {r.get('audience_type', 'INDIVIDUAL')}",
+                })
+
+            # Also fetch administrative actions from Supabase activity_logs
+            act_rows = conn.execute(text(
+                """SELECT id, action, entity_type, entity_id, created_at
+                   FROM public.activity_logs
+                   WHERE action ILIKE '%suspend%' OR action ILIKE '%delete%' OR action ILIKE '%security%' OR action ILIKE '%resumed%'
+                   ORDER BY created_at DESC
+                   LIMIT 20"""
+            )).mappings().all()
+
+            for ar in act_rows:
+                ar = dict(ar)
+                act = ar.get("action") or "admin.action"
+                act_lower = act.lower()
+                sev = "critical" if "suspend" in act_lower or "delete" in act_lower else "low" if "resumed" in act_lower else "medium"
+                ts = ar.get("created_at")
+                cat = "Administrative Suspension" if "suspend" in act_lower else "Administrative Audit Action"
+                notifications.append({
+                    "id": f"act_{ar.get('id')}",
+                    "title": f"Supabase Admin: {act.replace('_', ' ').replace('.', ' ').title()}",
+                    "message": f"Administrator executed {act} on {ar.get('entity_type', 'entity')} (ID: {ar.get('entity_id')}).",
+                    "type": "critical" if sev == "critical" else "warning" if sev == "medium" else "info",
+                    "severity": sev,
+                    "category": cat,
+                    "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
+                    "is_read": False,
+                    "source": "Supabase Audit Log",
+                    "mitigation": "Investigate administrator audit trail if action was unauthorized.",
+                    "affected": f"{ar.get('entity_type', 'Entity')}: {ar.get('entity_id')}",
+                })
+    except Exception as exc:
+        logger.debug("Notifications: Supabase query skipped: %s", exc)
+
+    # 3. Server health notification (from psutil — no DB round-trip)
     try:
         import psutil
         cpu = psutil.cpu_percent(interval=None)
@@ -535,10 +655,12 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
                 "message": f"CPU {cpu:.0f}% · RAM {mem:.0f}% · Disk {disk:.0f}% — high utilization detected.",
                 "type": "critical" if cpu > 95 or mem > 95 else "warning",
                 "severity": "high" if cpu > 95 or mem > 95 else "medium",
-                "category": "server",
+                "category": "Server Health",
                 "created_at": now_iso,
                 "is_read": False,
                 "source": "Server Monitor",
+                "mitigation": "Inspect high-CPU processes or expand container memory ceiling.",
+                "affected": "Docker Host Compute Node",
             })
         else:
             notifications.append({
@@ -547,15 +669,17 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
                 "message": f"CPU {cpu:.0f}% · RAM {mem:.0f}% · Disk {disk:.0f}% — all within normal range.",
                 "type": "info",
                 "severity": "low",
-                "category": "server",
+                "category": "Server Health",
                 "created_at": now_iso,
                 "is_read": True,
                 "source": "Server Monitor",
+                "mitigation": "Telemetry nominal. Routine monitoring active.",
+                "affected": "Docker Host Compute Node",
             })
     except Exception:
         pass
 
-    # 3. Database connectivity notification
+    # 4. Database connectivity notification
     try:
         engine = get_target_engine()
         with engine.connect() as conn:
@@ -566,10 +690,12 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
             "message": "Target Supabase database is reachable and responding.",
             "type": "info",
             "severity": "low",
-            "category": "database",
+            "category": "Database Connectivity",
             "created_at": now_iso,
             "is_read": True,
             "source": "Database Monitor",
+            "mitigation": "Database health verified.",
+            "affected": "Supabase Singapore AWS Pooler",
         })
     except Exception as exc:
         notifications.insert(0, {
@@ -578,12 +704,116 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
             "message": f"Cannot reach target database: {str(exc)[:120]}",
             "type": "critical",
             "severity": "critical",
-            "category": "database",
+            "category": "Database Connectivity",
             "created_at": now_iso,
             "is_read": False,
             "source": "Database Monitor",
+            "mitigation": "Check network connectivity and Supabase pooler credentials.",
+            "affected": "Supabase Singapore AWS Pooler",
         })
+
+    # Sort all notifications newest first
+    notifications.sort(key=lambda x: str(x.get("created_at", "")), reverse=True)
 
     _notif_cache = notifications
     _notif_cache_ts = time.monotonic()
     return notifications
+
+
+# ─────────────────────────────────────────────────────────────
+# PHASE 2: REDIS CACHE STATS & POOL STATS
+# ─────────────────────────────────────────────────────────────
+
+@router.get("/cache-stats")
+def get_cache_stats(_: CurrentUser = Depends(get_current_user)):
+    """
+    Returns Redis cache statistics for monitoring dashboard.
+    Phase 2: Track cache hit rate, memory usage, and performance.
+    """
+    try:
+        from app.cache.redis_client import get_cache_stats as get_redis_stats
+        return get_redis_stats()
+    except Exception as e:
+        return {
+            "status": "unavailable",
+            "error": str(e),
+            "message": "Redis may not be configured or running. Check REDIS_ENABLED in .env"
+        }
+
+
+@router.get("/pool-stats")
+def get_pool_stats(_: CurrentUser = Depends(get_current_user)):
+    """
+    Returns database connection pool statistics.
+    Phase 2: Monitor connection pool health and utilization.
+    """
+    try:
+        from app.database.connection import get_target_engine, get_app_engine
+        
+        target_engine = get_target_engine()
+        app_engine = get_app_engine()
+        
+        stats = {
+            "target_database": {
+                "pool_size": target_engine.pool.size(),
+                "checked_out": target_engine.pool.checkedout(),
+                "overflow": target_engine.pool.overflow(),
+                "checked_in": target_engine.pool.size() - target_engine.pool.checkedout(),
+            },
+            "app_database": {
+                "pool_size": app_engine.pool.size(),
+                "checked_out": app_engine.pool.checkedout(),
+                "overflow": app_engine.pool.overflow(),
+                "checked_in": app_engine.pool.size() - app_engine.pool.checkedout(),
+            },
+            "status": "healthy"
+        }
+        
+        # Add warnings if pool is exhausted
+        if stats["target_database"]["checked_out"] >= target_engine.pool.size():
+            stats["target_database"]["warning"] = "Pool at capacity"
+        
+        if stats["app_database"]["checked_out"] >= app_engine.pool.size():
+            stats["app_database"]["warning"] = "Pool at capacity"
+        
+        return stats
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+
+@router.get("/websocket-stats")
+def get_websocket_stats(_: CurrentUser = Depends(get_current_user)):
+    """
+    Returns WebSocket connection statistics.
+    Phase 2: Monitor real-time connection health.
+    """
+    try:
+        from app.websocket.server import sio
+        
+        # Get all connected clients
+        rooms = sio.manager.rooms
+        
+        # Count clients per channel
+        channel_counts = {}
+        for room_name in rooms.keys():
+            if room_name.startswith('monitoring:'):
+                channel = room_name.replace('monitoring:', '')
+                channel_counts[channel] = len(rooms[room_name])
+        
+        return {
+            "status": "active" if len(rooms) > 0 else "idle",
+            "total_connections": len([r for r in rooms.keys() if not r.startswith('monitoring:')]),
+            "subscriptions": channel_counts,
+            "message": "WebSocket server is operational"
+        }
+    except Exception as e:
+        return {
+            "status": "unavailable",
+            "error": str(e),
+            "message": "WebSocket server may not be enabled. Check WEBSOCKET_ENABLED in .env"
+        }
+

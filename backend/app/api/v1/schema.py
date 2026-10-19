@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import CurrentUser, get_current_user, get_db_session, require_role
 from app.auth.rbac import Role
+from app.cache.decorators import redis_cached
 from app.config.settings import get_settings
 from app.database.connection import get_app_engine, get_target_engine, set_target_url_override
 from app.schemas.health_schema import TableSchema
@@ -71,6 +72,7 @@ def _transform_and_normalize_url(raw_url: str) -> tuple[str, str | None]:
 
 
 @router.get("/overview")
+@redis_cached(key_prefix="schema:overview", ttl=60)
 def get_schema_overview(_: CurrentUser = Depends(get_current_user)):
     """
     Returns real live status and actual tables of all connected databases.
@@ -244,11 +246,8 @@ def apply_connection(req: ConnectionTestRequest, _: CurrentUser = Depends(requir
         set_target_url_override(url)
 
         # Invalidate all caches so the next load fetches fresh data
-        from app.api.v1.monitoring import invalidate_all_monitoring_caches
+        from app.cache.redis_client import invalidate_all_monitoring_caches
         invalidate_all_monitoring_caches()
-        global _overview_cache, _overview_cache_ts
-        _overview_cache = None
-        _overview_cache_ts = 0.0
 
         return {
             "success": True,

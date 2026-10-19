@@ -16,6 +16,8 @@ services:
     environment:
       APP_DB_URL: postgresql+psycopg2://app_user:app_password@app-db:5432/rag_backend_app
       OLLAMA_BASE_URL: http://ollama:11434
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     volumes:
       - ./app:/app/app
       - ./.env:/app/.env:ro
@@ -35,6 +37,7 @@ services:
 
   app-db:
     image: postgres:16-alpine
+    command: postgres -c synchronous_commit=off -c fsync=off
     environment:
       POSTGRES_USER: app_user
       POSTGRES_PASSWORD: app_password
@@ -60,8 +63,25 @@ services:
     #   docker compose exec ollama ollama pull llama3.1
     #   docker compose exec ollama ollama pull nomic-embed-text
 
+  # Phase 2: Redis cache for distributed caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
 volumes:
   app_db_data:
   vector_db_data:
   backend_logs:
   ollama_data:
+  redis_data:

@@ -18,6 +18,7 @@ from typing import Generator
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool, NullPool
 
 from app.config.settings import get_settings
 from app.database.readonly_guard import check_connection_level_safety
@@ -43,6 +44,21 @@ def _install_readonly_guard(engine: Engine) -> None:
             check_connection_level_safety(statement)
         except Exception as exc:  # noqa: BLE001 - re-raise as our domain exception
             logger.error("Blocked unsafe statement against target DB", extra={"statement": statement})
+
+            # Publish a security event so it appears in the notification bell
+            try:
+                from app.core.event_bus import publish_event_sync
+                publish_event_sync(
+                    source="security",
+                    event_type="readonly_violation",
+                    severity="critical",
+                    title="Read-only violation blocked",
+                    message=f"A mutating SQL statement was intercepted and blocked: {str(exc)[:200]}",
+                    metadata={"statement_preview": statement[:300]},
+                )
+            except Exception:
+                pass
+
             raise DatabaseReadOnlyViolationError(
                 "A non read-only statement was blocked before execution.",
                 details={"reason": str(exc)},
@@ -122,6 +138,7 @@ def get_target_engine() -> Engine:
         is_pooler = "pooler.supabase.com" in url or ":6543" in url
 
         if is_postgres:
+            connect_args["connect_timeout"] = 3
             if not is_pooler:
                 execution_options["postgresql_readonly"] = True
                 connect_args["options"] = f"-c statement_timeout={settings.target_db_statement_timeout_ms}"
@@ -131,13 +148,23 @@ def get_target_engine() -> Engine:
         elif url.startswith("sqlite"):
             connect_args["check_same_thread"] = False
 
+        # Phase 2: Connection pooling configuration
         engine_kwargs = {
-            "pool_pre_ping": True,
+            "pool_pre_ping": settings.target_db_pool_pre_ping,
             "execution_options": execution_options,
             "connect_args": connect_args,
         }
-        if not url.startswith("sqlite"):
+        
+        if url.startswith("sqlite"):
+            # SQLite doesn't support connection pooling
+            engine_kwargs["poolclass"] = NullPool
+        else:
+            # PostgreSQL/MySQL with QueuePool for connection reuse
+            engine_kwargs["poolclass"] = QueuePool
             engine_kwargs["pool_size"] = settings.target_db_pool_size
+            engine_kwargs["max_overflow"] = settings.target_db_pool_max_overflow
+            engine_kwargs["pool_recycle"] = settings.target_db_pool_recycle_seconds
+            engine_kwargs["pool_timeout"] = 30  # Wait up to 30s for available connection
 
         try:
             _target_engine = create_engine(url, **engine_kwargs)
@@ -159,14 +186,25 @@ def get_app_engine() -> Engine:
     if _app_engine is None:
         settings = get_settings()
         app_url = settings.app_db_url
+        
+        # Phase 2: Connection pooling for app database too
         engine_kwargs = {"pool_pre_ping": True}
         connect_args = {}
+        
         if app_url.startswith("sqlite"):
             connect_args["check_same_thread"] = False
             engine_kwargs["connect_args"] = connect_args
+            engine_kwargs["poolclass"] = NullPool
+        else:
+            engine_kwargs["poolclass"] = QueuePool
+            engine_kwargs["pool_size"] = 50
+            engine_kwargs["max_overflow"] = 50
+            engine_kwargs["pool_recycle"] = 1800
+            engine_kwargs["pool_timeout"] = 5
+            
         _app_engine = create_engine(app_url, **engine_kwargs)
         _AppSession = sessionmaker(bind=_app_engine, autoflush=False, autocommit=False)
-        logger.info("Application database engine initialized")
+        logger.info("Application database engine initialized with connection pooling")
     return _app_engine
 
 

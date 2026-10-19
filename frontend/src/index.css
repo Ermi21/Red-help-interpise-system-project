@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-background: 255 255 255;
+  --color-surface: 249 250 251;
+  --color-surfaceHover: 254 226 226;
+  --color-primary: 239 68 68;
+  --color-success: 52 211 153;
+  --color-warning: 251 191 36;
+  --color-danger: 254 202 202;
+  --color-textPrimary: 17 17 17;
+  --color-textSecondary: 75 85 99;
+  --color-border: 229 231 235;
+
+  /* Red Cloud Brand Identity */
+  --brand-red: #E30613;
+  --brand-dark: #3A3A3A;
+  --brand-gray: #F2F2F2;
+  --brand-white: #FFFFFF;
+}
+
+.dark {
+  --color-background: 11 13 14;
+  --color-surface: 21 24 26;
+  --color-surfaceHover: 42 22 22;
+  --color-primary: 239 68 68;
+  --color-success: 52 211 153;
+  --color-warning: 251 191 36;
+  --color-danger: 254 202 202;
+  --color-textPrimary: 249 250 251;
+  --color-textSecondary: 156 163 175;
+  --color-border: 38 41 45;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-textPrimary font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-surface/90 border border-border/50 shadow-lg;
+  }
+  
+  .glass-card {
+    @apply glass rounded-xl p-6 transition-all duration-300 hover:shadow-primary/10 hover:border-primary/30;
+  }
+  
+  .glass-panel {
+    @apply glass rounded-2xl;
+  }
+
+  .glass-frosted {
+    background: rgba(18, 20, 24, 0.65);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-frosted-card {
+    background: rgba(30, 36, 48, 0.65);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
+  }
+
+  .cyber-grid-bg {
+    background-image: 
+      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-300 to-gray-500;
+  }
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--color-surface));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-textSecondary));
+}
+
+/* Animations */
+@keyframes pulseRing {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.pulse-ring {
+  animation: pulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

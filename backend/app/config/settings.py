@@ -84,6 +84,26 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_dir: str = "./logs"
 
+    # --- Phase 2: Redis Cache ---
+    redis_host: str = "localhost"
+    redis_port: int = 6379
+    redis_db: int = 0
+    redis_password: str = ""
+    redis_enabled: bool = True
+
+    # --- Phase 2: WebSockets ---
+    websocket_enabled: bool = True
+    websocket_monitoring_interval_s: int = 10
+
+    # --- Phase 2: Connection Pooling ---
+    target_db_pool_size: int = 20
+    target_db_pool_max_overflow: int = 10
+    target_db_pool_recycle_seconds: int = 3600
+    target_db_pool_pre_ping: bool = True
+
+    app_db_pool_size: int = 10
+    app_db_pool_max_overflow: int = 5
+
 
 @lru_cache
 def get_settings() -> Settings:
