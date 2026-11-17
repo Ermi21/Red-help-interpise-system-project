@@ -29,7 +29,7 @@ interface AuthContextType {
   profileComplete: boolean;
   completeProfile: () => void;
   users: UserAccount[];
-  addUser: (email: string, role: 'admin'|'superadmin', pass: string) => Promise<void>;
+  addUser: (email: string, role: 'admin' | 'superadmin', pass: string) => Promise<void>;
   updateUserPassword: (email: string, newPass: string) => Promise<void>;
   loginTime: string | null;
 }
@@ -41,7 +41,7 @@ const safeFetchJson = async (url: string, options: RequestInit) => {
     const response = await fetch(url, options);
     const contentType = response.headers.get('content-type') || '';
     const text = await response.text();
-    
+
     if (!text || !response.ok || !contentType.includes('application/json')) {
       return null;
     }
@@ -64,13 +64,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const timestamp = parseInt(timestampStr, 10);
     const now = Date.now();
     const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours full enterprise session
-    
+
     if (now - timestamp > SESSION_DURATION) {
       // Session expired
       localStorage.clear();
       return { isAuth: false, email: null, role: null, avatar: null, complete: false, change: false, loginTime: null };
     }
-    
+
     // Refresh timestamp
     localStorage.setItem('auth_timestamp', now.toString());
     return {
@@ -100,9 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Monitor user activity and handle 24-hour session expiry
   useEffect(() => {
     if (!isAuthenticated) return;
-    
+
     const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-    
+
     // Check every 30 seconds if session has expired
     const interval = setInterval(() => {
       const timestampStr = localStorage.getItem('auth_timestamp');
@@ -116,18 +116,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem('auth_timestamp', Date.now().toString());
       }
     }, 30000);
-    
+
     // Refresh the session timer whenever the user interacts with the app
     const handleActivity = () => {
       localStorage.setItem('auth_timestamp', Date.now().toString());
     };
-    
+
     window.addEventListener('click', handleActivity, { passive: true });
     window.addEventListener('keydown', handleActivity, { passive: true });
     window.addEventListener('mousemove', handleActivity, { passive: true });
     window.addEventListener('focus', handleActivity);
     document.addEventListener('visibilitychange', handleActivity);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('click', handleActivity);
@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = async (email: string, password?: string, telegramChatId?: string) => {
-    let userRole: 'admin' | 'superadmin' = (email === 'superadmin@company.com') ? 'superadmin' : 'admin';
+    let userRole: 'admin' | 'superadmin' = (email === 'superadmin@company.com' || email === 'superadmin@gmail.com') ? 'superadmin' : 'admin';
     let needsChange = false;
     let authSuccess = false;
 
@@ -230,7 +230,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(timer);
       if (res.ok) {
         const apiData = await res.json();
-        userRole = (email === 'superadmin@company.com' || apiData.user?.role === 'superadmin') ? 'superadmin' : (apiData.user?.role || 'admin');
+        userRole = (email === 'superadmin@company.com' || email === 'superadmin@gmail.com' || apiData.user?.role === 'superadmin') ? 'superadmin' : (apiData.user?.role || 'admin');
         authSuccess = true;
         if (apiData.access_token) {
           localStorage.setItem('access_token', apiData.access_token);
@@ -281,7 +281,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!authSuccess) {
       throw new Error('Invalid email or password.');
     }
-    
+
     const nowLoginTime = new Date().toISOString();
     setIsAuthenticated(true);
     setUserEmail(email);
@@ -356,7 +356,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('authToken');
-    
+
     setIsAuthenticated(false);
     setUserEmail(null);
     setRole(null);
@@ -366,7 +366,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoginTime(null);
   };
 
-  const addUser = async (email: string, role: 'admin'|'superadmin', pass: string) => {
+  const addUser = async (email: string, role: 'admin' | 'superadmin', pass: string) => {
     try {
       const authUrl = import.meta.env.VITE_N8N_AUTH_URL || 'http://localhost:5678/webhook/erp-auth';
       await fetch(authUrl, {
@@ -380,14 +380,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let newUsers: UserAccount[];
     const existingIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
-    
+
     if (existingIndex >= 0) {
       newUsers = [...users];
       newUsers[existingIndex] = { ...newUsers[existingIndex], role, password: pass, needsPasswordChange: true };
     } else {
       newUsers = [...users, { email, role, password: pass, needsPasswordChange: true }];
     }
-    
+
     setUsers(newUsers);
   };
 
@@ -406,7 +406,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("n8n update_password webhook unreachable", err);
     }
 
-    const newUsers = users.map(u => 
+    const newUsers = users.map(u =>
       u.email === email ? { ...u, password: newPass, needsPasswordChange: false } : u
     );
     setUsers(newUsers);
@@ -427,7 +427,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     const newRequests = passwordRequests.map(r => r.email === email ? { ...r, status: 'approved' as const } : r);
     setPasswordRequests(newRequests);
-    
+
     // Auto cleanup after a minute in memory
     setTimeout(() => {
       setPasswordRequests(prev => prev.filter(r => r.email !== email));
@@ -439,7 +439,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ 
+    <AuthContext.Provider value={{
       isAuthenticated, login, logout, userEmail, role, avatar, updateAvatar,
       needsPasswordChange, setNeedsPasswordChange,
       passwordRequests, addPasswordRequest, approvePasswordRequest,

@@ -41,8 +41,15 @@ def execute_readonly_query(raw_sql: str, params: dict | None = None) -> list[dic
             columns = list(result.keys())
             rows = [dict(zip(columns, row)) for row in result.fetchall()]
             return rows
-    except UnsafeSQLError:
-        raise
-    except SQLAlchemyError as exc:
-        logger.error("Query execution failed: %s", exc)
-        raise QueryExecutionError(str(exc)) from exc
+    except Exception as target_exc:
+        logger.warning("Target DB query attempt failed, attempting fallback to App DB: %s", target_exc)
+        try:
+            from app.database.connection import app_session
+            with app_session() as session:
+                result = session.execute(text(safe_sql), params or {})
+                columns = list(result.keys())
+                rows = [dict(zip(columns, row)) for row in result.fetchall()]
+                return rows
+        except Exception as exc:
+            logger.error("Query execution failed on both engines: %s", exc)
+            raise QueryExecutionError(str(exc)) from exc

@@ -46,52 +46,40 @@ const domainConfig: Record<Domain, DomainConfig> = {
 interface ButtonOption {
   domain: Domain;
   label: string;
-  sublabel: string;
-  badge: string;
   Icon: React.ElementType;
   activeClass: string;
   inactiveClass: string;
   glowClass: string;
   iconBgActive: string;
-  badgeActive: string;
 }
 
 const domainButtons: ButtonOption[] = [
   {
     domain: 'database',
     label: 'Database AI',
-    sublabel: 'SQL & Schema Analysis',
-    badge: 'RAG Active',
     Icon: Database,
     activeClass: 'bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 text-white shadow-lg shadow-cyan-500/25 border-cyan-400/50 ring-2 ring-cyan-400/30',
     inactiveClass: 'bg-surface/80 text-textSecondary hover:text-cyan-400 hover:bg-cyan-500/10 border-border/80 hover:border-cyan-500/40',
-    glowClass: 'bg-cyan-500',
-    iconBgActive: 'bg-cyan-400/20 text-cyan-200 border-cyan-300/40',
-    badgeActive: 'bg-cyan-300/20 text-cyan-100 border-cyan-300/30'
+    glowClass: 'bg-cyan-400',
+    iconBgActive: 'bg-white/20 text-white border-white/30'
   },
   {
     domain: 'infrastructure',
     label: 'Server AI',
-    sublabel: 'Compute & SRE Telemetry',
-    badge: 'Live Metrics',
     Icon: Server,
     activeClass: 'bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 text-white shadow-lg shadow-emerald-500/25 border-emerald-400/50 ring-2 ring-emerald-400/30',
     inactiveClass: 'bg-surface/80 text-textSecondary hover:text-emerald-400 hover:bg-emerald-500/10 border-border/80 hover:border-emerald-500/40',
-    glowClass: 'bg-emerald-500',
-    iconBgActive: 'bg-emerald-400/20 text-emerald-200 border-emerald-300/40',
-    badgeActive: 'bg-emerald-300/20 text-emerald-100 border-emerald-300/30'
+    glowClass: 'bg-emerald-400',
+    iconBgActive: 'bg-white/20 text-white border-white/30'
   },
   {
     domain: 'security',
     label: 'Security AI',
-    sublabel: 'Cyber Defense & DLP',
-    badge: 'Firewall Guard',
     Icon: ShieldAlert,
     activeClass: 'bg-gradient-to-r from-rose-600 via-red-600 to-amber-600 text-white shadow-lg shadow-rose-500/25 border-rose-400/50 ring-2 ring-rose-400/30',
     inactiveClass: 'bg-surface/80 text-textSecondary hover:text-rose-400 hover:bg-rose-500/10 border-border/80 hover:border-rose-500/40',
-    glowClass: 'bg-rose-500',
-    iconBgActive: 'bg-rose-400/20 text-rose-200 border-rose-300/40',
-    badgeActive: 'bg-rose-300/20 text-rose-100 border-rose-300/30'
+    glowClass: 'bg-rose-400',
+    iconBgActive: 'bg-white/20 text-white border-white/30'
   }
 ];
 
@@ -111,20 +99,17 @@ export default function AIAssistant() {
               Enterprise v2.0
             </span>
           </h1>
-          <p className="text-xs text-textSecondary mt-0.5">
-            Switch between specialized AI models with domain-specific knowledge bases
-          </p>
         </div>
 
-        {/* 3 Distinctly Colored Action Buttons */}
-        <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
-          {domainButtons.map(({ domain: d, label, sublabel, badge, Icon, activeClass, inactiveClass, glowClass, iconBgActive, badgeActive }) => {
+        {/* 3 Distinctly Colored Action Buttons (Clean & Professional Standard) */}
+        <div className="flex items-center gap-2.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
+          {domainButtons.map(({ domain: d, label, Icon, activeClass, inactiveClass, glowClass, iconBgActive }) => {
             const isActive = domain === d;
             return (
               <button
                 key={d}
                 onClick={() => setDomain(d)}
-                className={`relative group flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-all duration-200 text-left flex-1 lg:flex-initial min-w-[170px] ${
+                className={`relative group flex items-center gap-2.5 px-4 py-2.5 rounded-xl border font-semibold text-sm transition-all duration-200 text-left flex-1 lg:flex-initial shadow-sm ${
                   isActive ? activeClass : inactiveClass
                 }`}
               >
@@ -135,31 +120,18 @@ export default function AIAssistant() {
 
                 {/* Icon Container */}
                 <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-transform duration-200 group-hover:scale-105 ${
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-transform duration-200 group-hover:scale-105 ${
                     isActive ? iconBgActive : 'bg-surface border-border text-textSecondary group-hover:text-textPrimary'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
                 </div>
 
-                {/* Text & Badge */}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-bold tracking-tight">{label}</span>
-                  </div>
-                  <span className={`text-[10px] ${isActive ? 'text-white/80' : 'text-textSecondary'}`}>
-                    {sublabel}
-                  </span>
-                </div>
+                {/* Text */}
+                <span className="text-sm font-bold tracking-tight">{label}</span>
 
-                {/* Mini Status Pill */}
-                <span
-                  className={`hidden sm:inline-block ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-md border ${
-                    isActive ? badgeActive : 'bg-surface border-border text-textSecondary'
-                  }`}
-                >
-                  {badge}
-                </span>
+                {/* Live Indicator Dot */}
+                <span className={`w-2 h-2 rounded-full ml-auto transition-all ${isActive ? 'bg-white shadow-sm shadow-white animate-pulse' : 'bg-border/60'}`} />
               </button>
             );
           })}

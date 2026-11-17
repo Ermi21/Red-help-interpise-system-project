@@ -1,30 +1,30 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  AreaChart, 
-  Area, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import {
+  AreaChart,
+  Area,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   ComposedChart
 } from 'recharts';
-import { 
-  Database, 
-  Server, 
-  ShieldCheck, 
-  Activity, 
-  RefreshCw, 
-  Play, 
-  Pause, 
-  Download, 
-  Sparkles, 
-  CheckCircle2, 
-  Sliders, 
-  Zap, 
-  TrendingUp, 
+import {
+  Database,
+  Server,
+  ShieldCheck,
+  Activity,
+  RefreshCw,
+  Play,
+  Pause,
+  Download,
+  Sparkles,
+  CheckCircle2,
+  Sliders,
+  Zap,
+  TrendingUp,
   ChevronDown,
   ChevronUp,
   FileSpreadsheet
@@ -61,7 +61,7 @@ interface EnterpriseOverviewChartProps {
 
 export default function EnterpriseOverviewChart({
   data,
-  title = "Tri-System Enterprise Synergy (Database • Server • Security)"
+  title = "Enterprise Synergy"
 }: EnterpriseOverviewChartProps) {
   const [activeFilter, setActiveFilter] = useState<'all' | 'database' | 'server' | 'security'>('all');
   const [chartType, setChartType] = useState<'area' | 'line'>('area');
@@ -103,10 +103,10 @@ export default function EnterpriseOverviewChart({
 
     const ticker = setInterval(() => {
       const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-      
+
       setTelemetryHistory(prev => {
         const last = prev[prev.length - 1] || { databaseThroughput: 75, serverLoad: 28, securityEvents: 95 };
-        
+
         const spikeMultiplier = simulateSpike ? 1.35 : 1.0;
         const nextDb = Math.max(15, Math.min(98, Math.round((last.databaseThroughput + (Math.floor(Math.random() * 9) - 4)) * spikeMultiplier)));
         const nextSrv = Math.max(10, Math.min(92, Math.round((last.serverLoad + (Math.floor(Math.random() * 7) - 3)) * spikeMultiplier)));
@@ -253,44 +253,46 @@ export default function EnterpriseOverviewChart({
       <div className="absolute top-0 right-1/4 w-96 h-40 bg-gradient-to-r from-red-600/10 via-primary/5 to-blue-600/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* ========================================================================= */}
-      {/* TOP HEADER CONTROLS (MATCHING DATABASE & SERVER MONITORING PATTERN)       */}
+      {/* TOP HEADER CONTROLS (PROFESSIONAL ENTERPRISE STANDARD)                   */}
       {/* ========================================================================= */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5 pb-4 border-b border-border/60 relative z-10">
         <div>
           <div className="flex items-center space-x-3">
-            <div className="p-1.5 rounded-xl bg-primary/10 border border-primary/20 shadow-sm flex items-center justify-center flex-shrink-0">
+            <div className="p-2 rounded-xl bg-primary/10 border border-primary/20 shadow-sm flex items-center justify-center flex-shrink-0">
               <Logo size={22} variant="icon" />
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2.5">
               <h2 className="text-lg font-bold text-textPrimary tracking-tight">{title}</h2>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20 animate-pulse">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary border border-primary/30 animate-pulse tracking-wider">
                 LIVE
               </span>
             </div>
           </div>
         </div>
 
-        {/* Action Controls & Dropdowns */}
-        <div className="flex flex-wrap items-center gap-2 self-start lg:self-auto">
+        {/* Action Controls & Dropdowns (Attractive Professional Standard Buttons) */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
           {/* Live Streaming Pause/Play */}
           <button
             onClick={() => setIsLiveStreaming(!isLiveStreaming)}
-            className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm ${
-              isLiveStreaming 
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' 
-                : 'bg-surface text-textSecondary border-border hover:text-textPrimary'
-            }`}
+            className={`h-9 px-3.5 rounded-xl border text-xs font-semibold flex items-center space-x-2 transition-all shadow-sm ${isLiveStreaming
+                ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/35 hover:bg-emerald-500/25 shadow-[0_0_12px_rgba(16,185,129,0.15)]'
+                : 'bg-surface text-textSecondary border-border hover:text-textPrimary hover:bg-surfaceHover'
+              }`}
             title={isLiveStreaming ? 'Pause live stream ticker' : 'Resume live stream ticker'}
           >
             {isLiveStreaming ? (
               <>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping mr-1" />
-                <Pause className="w-3.5 h-3.5 mr-1" />
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <Pause className="w-3.5 h-3.5 text-emerald-400 ml-0.5" />
                 <span>Streaming</span>
               </>
             ) : (
               <>
-                <Play className="w-3.5 h-3.5 mr-1" />
+                <Play className="w-3.5 h-3.5 text-textSecondary" />
                 <span>Paused</span>
               </>
             )}
@@ -300,37 +302,39 @@ export default function EnterpriseOverviewChart({
           <button
             onClick={syncWithBackend}
             disabled={isRefreshing}
-            className="p-2 rounded-xl bg-surfaceHover hover:bg-surface border border-border text-textPrimary transition-all shadow-sm disabled:opacity-50"
+            className="h-9 w-9 rounded-xl bg-surface hover:bg-surfaceHover border border-border text-textPrimary transition-all shadow-sm flex items-center justify-center disabled:opacity-50 hover:border-primary/40 hover:text-primary"
             title="Sync with backend metrics"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-primary ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-primary' : 'text-textSecondary'}`} />
           </button>
 
           {/* Chart Presentation Mode: Area vs Line */}
-          <div className="flex items-center bg-surface border border-border rounded-xl p-0.5 text-xs font-semibold shadow-sm">
+          <div className="h-9 flex items-center bg-surface border border-border rounded-xl p-0.5 text-xs font-semibold shadow-sm">
             <button
               onClick={() => setChartType('area')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                chartType === 'area' ? 'bg-primary text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary'
-              }`}
+              className={`h-full px-3 rounded-lg transition-all flex items-center justify-center ${chartType === 'area'
+                  ? 'bg-primary text-white shadow-sm font-bold'
+                  : 'text-textSecondary hover:text-textPrimary hover:bg-surfaceHover/60'
+                }`}
             >
-              Area Glow
+              <span>Area Glow</span>
             </button>
             <button
               onClick={() => setChartType('line')}
-              className={`px-2.5 py-1 rounded-lg transition-all ${
-                chartType === 'line' ? 'bg-primary text-white shadow-sm' : 'text-textSecondary hover:text-textPrimary'
-              }`}
+              className={`h-full px-3 rounded-lg transition-all flex items-center justify-center ${chartType === 'line'
+                  ? 'bg-primary text-white shadow-sm font-bold'
+                  : 'text-textSecondary hover:text-textPrimary hover:bg-surfaceHover/60'
+                }`}
             >
-              Vectors
+              <span>Vectors</span>
             </button>
           </div>
 
-          {/* Timeframe Dropdown (Exact Match to Database & Server) */}
-          <select 
+          {/* Timeframe Dropdown */}
+          <select
             value={timeframe}
             onChange={(e: any) => setTimeframe(e.target.value)}
-            className="bg-surfaceHover border border-border text-xs rounded-xl px-3 py-1.5 focus:ring-primary focus:border-primary text-textPrimary font-semibold transition-colors cursor-pointer shadow-sm"
+            className="h-9 bg-surface border border-border text-xs rounded-xl px-3 focus:ring-primary focus:border-primary text-textPrimary font-semibold transition-colors cursor-pointer shadow-sm hover:border-primary/40"
           >
             <option value="Last 1 Hour">Last 1 Hour</option>
             <option value="Last 24 Hours">Last 24 Hours</option>
@@ -340,165 +344,113 @@ export default function EnterpriseOverviewChart({
       </div>
 
       {/* ========================================================================= */}
-      {/* INTERACTIVE STREAM SELECTOR TABS & LIVE METRIC CARDS                      */}
+      {/* 3 ATTRACTIVE SYSTEM BUTTONS (CLEAN & PROFESSIONAL STANDARD)               */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 relative z-10">
-        {/* Card 1: Database Throughput (Red Cloud Red) */}
-        <div 
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 mb-4 relative z-10">
+        {/* 1. Database Engine Button */}
+        <button
           onClick={() => setActiveFilter(activeFilter === 'database' ? 'all' : 'database')}
-          className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none relative overflow-hidden ${
-            activeFilter === 'database' || activeFilter === 'all'
-              ? 'bg-red-500/10 border-red-500/40 shadow-sm hover:border-red-500/60' 
-              : 'bg-surface/60 border-border/60 opacity-55 hover:opacity-80'
-          }`}
+          className={`group px-4 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between cursor-pointer select-none text-left relative overflow-hidden shadow-sm ${activeFilter === 'database'
+              ? 'bg-gradient-to-r from-red-600/25 via-red-950/40 to-surface border-red-500/70 shadow-[0_0_20px_rgba(239,68,68,0.25)] ring-1 ring-red-500/40'
+              : activeFilter === 'all'
+                ? 'bg-surface/80 border-border hover:border-red-500/50 hover:bg-red-500/10'
+                : 'bg-surface/40 border-border/40 opacity-40 hover:opacity-80 hover:border-red-500/40'
+            }`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-red-500/20 text-red-500">
-                <Database className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-textPrimary block">Database Engine</span>
-                <span className="text-[10px] text-textSecondary font-mono">QPS Throughput & Pool</span>
-              </div>
+          <div className="flex items-center space-x-3">
+            <div className={`p-2.5 rounded-xl border transition-all ${activeFilter === 'database'
+                ? 'bg-red-500/30 border-red-500/50 text-red-400 shadow-sm'
+                : 'bg-red-500/15 border-red-500/25 text-red-400 group-hover:scale-105'
+              }`}>
+              <Database className="w-4 h-4" />
             </div>
-            <span className="font-mono text-base font-extrabold text-red-500">
-              {latest.databaseThroughput}%
+            <span className="text-sm font-bold text-textPrimary group-hover:text-red-400 transition-colors">
+              Database Engine
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-textSecondary">
-            <span>Buffer Hit: <strong className="text-textPrimary">99.8%</strong></span>
-            <span>Active: <strong className="text-red-400">1,420 QPS</strong></span>
-          </div>
-          <div className="w-full bg-background/80 rounded-full h-1 mt-1.5 overflow-hidden">
-            <div className="h-full bg-red-500 rounded-full transition-all duration-500" style={{ width: `${latest.databaseThroughput}%` }} />
-          </div>
-        </div>
+          <span className="font-mono text-sm font-extrabold text-red-400 bg-red-500/15 px-3 py-1 rounded-xl border border-red-500/30">
+            {latest.databaseThroughput}%
+          </span>
+        </button>
 
-        {/* Card 2: Server Cluster (Tech Blue) */}
-        <div 
+        {/* 2. Server Cluster Button */}
+        <button
           onClick={() => setActiveFilter(activeFilter === 'server' ? 'all' : 'server')}
-          className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none relative overflow-hidden ${
-            activeFilter === 'server' || activeFilter === 'all'
-              ? 'bg-blue-500/10 border-blue-500/40 shadow-sm hover:border-blue-500/60' 
-              : 'bg-surface/60 border-border/60 opacity-55 hover:opacity-80'
-          }`}
+          className={`group px-4 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between cursor-pointer select-none text-left relative overflow-hidden shadow-sm ${activeFilter === 'server'
+              ? 'bg-gradient-to-r from-blue-600/25 via-blue-950/40 to-surface border-blue-500/70 shadow-[0_0_20px_rgba(59,130,246,0.25)] ring-1 ring-blue-500/40'
+              : activeFilter === 'all'
+                ? 'bg-surface/80 border-border hover:border-blue-500/50 hover:bg-blue-500/10'
+                : 'bg-surface/40 border-border/40 opacity-40 hover:opacity-80 hover:border-blue-500/40'
+            }`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400">
-                <Server className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-textPrimary block">Server Cluster</span>
-                <span className="text-[10px] text-textSecondary font-mono">Compute & Memory</span>
-              </div>
+          <div className="flex items-center space-x-3">
+            <div className={`p-2.5 rounded-xl border transition-all ${activeFilter === 'server'
+                ? 'bg-blue-500/30 border-blue-500/50 text-blue-400 shadow-sm'
+                : 'bg-blue-500/15 border-blue-500/25 text-blue-400 group-hover:scale-105'
+              }`}>
+              <Server className="w-4 h-4" />
             </div>
-            <span className="font-mono text-base font-extrabold text-blue-400">
-              {latest.serverLoad}%
+            <span className="text-sm font-bold text-textPrimary group-hover:text-blue-400 transition-colors">
+              Server Cluster
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-textSecondary">
-            <span>vCPU: <strong className="text-textPrimary">4 Cores</strong></span>
-            <span>RAM: <strong className="text-blue-400">4.2 / 16 GB</strong></span>
-          </div>
-          <div className="w-full bg-background/80 rounded-full h-1 mt-1.5 overflow-hidden">
-            <div className="h-full bg-blue-500 rounded-full transition-all duration-500" style={{ width: `${latest.serverLoad}%` }} />
-          </div>
-        </div>
+          <span className="font-mono text-sm font-extrabold text-blue-400 bg-blue-500/15 px-3 py-1 rounded-xl border border-blue-500/30">
+            {latest.serverLoad}%
+          </span>
+        </button>
 
-        {/* Card 3: Security & Firewall (Emerald / Green) */}
-        <div 
+        {/* 3. Security Perimeter Button */}
+        <button
           onClick={() => setActiveFilter(activeFilter === 'security' ? 'all' : 'security')}
-          className={`p-3.5 rounded-2xl border transition-all cursor-pointer select-none relative overflow-hidden ${
-            activeFilter === 'security' || activeFilter === 'all'
-              ? 'bg-emerald-500/10 border-emerald-500/40 shadow-sm hover:border-emerald-500/60' 
-              : 'bg-surface/60 border-border/60 opacity-55 hover:opacity-80'
-          }`}
+          className={`group px-4 py-3 rounded-2xl border transition-all duration-300 flex items-center justify-between cursor-pointer select-none text-left relative overflow-hidden shadow-sm ${activeFilter === 'security'
+              ? 'bg-gradient-to-r from-emerald-600/25 via-emerald-950/40 to-surface border-emerald-500/70 shadow-[0_0_20px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/40'
+              : activeFilter === 'all'
+                ? 'bg-surface/80 border-border hover:border-emerald-500/50 hover:bg-emerald-500/10'
+                : 'bg-surface/40 border-border/40 opacity-40 hover:opacity-80 hover:border-emerald-500/40'
+            }`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-textPrimary block">Security Perimeter</span>
-                <span className="text-[10px] text-textSecondary font-mono">Zero-Trust WAF</span>
-              </div>
+          <div className="flex items-center space-x-3">
+            <div className={`p-2.5 rounded-xl border transition-all ${activeFilter === 'security'
+                ? 'bg-emerald-500/30 border-emerald-500/50 text-emerald-400 shadow-sm'
+                : 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400 group-hover:scale-105'
+              }`}>
+              <ShieldCheck className="w-4 h-4" />
             </div>
-            <span className="font-mono text-base font-extrabold text-emerald-400">
-              {latest.securityEvents}%
+            <span className="text-sm font-bold text-textPrimary group-hover:text-emerald-400 transition-colors">
+              Security Perimeter
             </span>
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] font-mono text-textSecondary">
-            <span>Threats: <strong className="text-emerald-400">0 Active</strong></span>
-            <span>Inspection: <strong className="text-textPrimary">247 Rules</strong></span>
-          </div>
-          <div className="w-full bg-background/80 rounded-full h-1 mt-1.5 overflow-hidden">
-            <div className="h-full bg-emerald-500 rounded-full transition-all duration-500" style={{ width: `${latest.securityEvents}%` }} />
-          </div>
-        </div>
+          <span className="font-mono text-sm font-extrabold text-emerald-400 bg-emerald-500/15 px-3 py-1 rounded-xl border border-emerald-500/30">
+            {latest.securityEvents}%
+          </span>
+        </button>
       </div>
 
-      {/* Filter Tabs Pills (Quick Switch) */}
-      <div className="flex items-center justify-between gap-2 mb-3 px-1 text-xs">
-        <div className="flex items-center space-x-1.5 bg-surfaceHover/80 p-1 rounded-xl border border-border">
+      {/* Quick Controls Bar: All Systems Synergy Reset + Spike Simulator */}
+      <div className="flex items-center justify-between gap-2 mb-3.5 px-0.5 text-xs">
+        <div className="flex items-center space-x-2">
           <button
             onClick={() => setActiveFilter('all')}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all ${
-              activeFilter === 'all'
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-textSecondary hover:text-textPrimary'
-            }`}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center space-x-1.5 ${activeFilter === 'all'
+                ? 'bg-primary text-white border-primary/40 shadow-sm'
+                : 'bg-surface text-textSecondary border-border hover:text-textPrimary hover:bg-surfaceHover'
+              }`}
           >
-            All 3 Systems (Synergy)
-          </button>
-          <button
-            onClick={() => setActiveFilter('database')}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all flex items-center space-x-1.5 ${
-              activeFilter === 'database'
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-textSecondary hover:text-red-400'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-red-500" />
-            <span>Database Only</span>
-          </button>
-          <button
-            onClick={() => setActiveFilter('server')}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all flex items-center space-x-1.5 ${
-              activeFilter === 'server'
-                ? 'bg-blue-600 text-white shadow-sm'
-                : 'text-textSecondary hover:text-blue-400'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-blue-500" />
-            <span>Server Only</span>
-          </button>
-          <button
-            onClick={() => setActiveFilter('security')}
-            className={`px-3 py-1 rounded-lg font-semibold transition-all flex items-center space-x-1.5 ${
-              activeFilter === 'security'
-                ? 'bg-emerald-600 text-white shadow-sm'
-                : 'text-textSecondary hover:text-emerald-400'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>Security Only</span>
+            <Activity className="w-3.5 h-3.5" />
+            <span>All 3 Systems (Synergy View)</span>
           </button>
         </div>
 
         {/* Spike Simulation Toggle */}
         <button
           onClick={() => setSimulateSpike(!simulateSpike)}
-          className={`hidden sm:flex items-center space-x-1 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-all ${
-            simulateSpike
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all ${simulateSpike
               ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-              : 'bg-surface border-border text-textSecondary hover:text-textPrimary'
-          }`}
+              : 'bg-surface border-border text-textSecondary hover:text-textPrimary hover:bg-surfaceHover'
+            }`}
           title="Simulate simulated load spike"
         >
-          <Zap className="w-3 h-3 text-amber-400" />
+          <Zap className="w-3.5 h-3.5 text-amber-400" />
           <span>{simulateSpike ? 'Spike Active (+35%)' : 'Simulate Spike'}</span>
         </button>
       </div>
@@ -513,34 +465,34 @@ export default function EnterpriseOverviewChart({
               <defs>
                 {/* Database Red Cloud Gradient */}
                 <linearGradient id="dbGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.6}/>
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0.03}/>
+                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0.03} />
                 </linearGradient>
 
                 {/* Server Tech Blue Gradient */}
                 <linearGradient id="srvGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.6}/>
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.03}/>
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.6} />
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.03} />
                 </linearGradient>
 
                 {/* Security Emerald Gradient */}
                 <linearGradient id="secGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.5}/>
-                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.02}/>
+                  <stop offset="5%" stopColor="#10B981" stopOpacity={0.5} />
+                  <stop offset="95%" stopColor="#10B981" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
 
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} opacity={0.3} />
               <XAxis dataKey="time" stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
               <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dx={-10} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-              
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#111827', 
-                  borderColor: '#374151', 
-                  borderRadius: '12px', 
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)', 
-                  color: '#F9FAFB' 
+
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#111827',
+                  borderColor: '#374151',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)',
+                  color: '#F9FAFB'
                 }}
                 itemStyle={{ fontWeight: 600 }}
                 cursor={{ stroke: '#4B5563', strokeWidth: 1, strokeDasharray: '4 4' }}
@@ -549,43 +501,43 @@ export default function EnterpriseOverviewChart({
 
               {/* 1. Database Stream (Red Cloud Red) */}
               {(activeFilter === 'all' || activeFilter === 'database') && (
-                <Area 
-                  type="monotone" 
-                  dataKey="databaseThroughput" 
-                  stroke="#EF4444" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#dbGrad)" 
-                  name="Database Capacity & Throughput" 
-                  activeDot={{ r: 6, strokeWidth: 0, fill: '#EF4444' }} 
+                <Area
+                  type="monotone"
+                  dataKey="databaseThroughput"
+                  stroke="#EF4444"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#dbGrad)"
+                  name="Database Capacity & Throughput"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#EF4444' }}
                 />
               )}
 
               {/* 2. Server Stream (Tech Blue) */}
               {(activeFilter === 'all' || activeFilter === 'server') && (
-                <Area 
-                  type="monotone" 
-                  dataKey="serverLoad" 
-                  stroke="#3B82F6" 
-                  strokeWidth={3} 
-                  fillOpacity={1} 
-                  fill="url(#srvGrad)" 
-                  name="Server Cluster Compute" 
-                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }} 
+                <Area
+                  type="monotone"
+                  dataKey="serverLoad"
+                  stroke="#3B82F6"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#srvGrad)"
+                  name="Server Cluster Compute"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }}
                 />
               )}
 
               {/* 3. Security Stream (Emerald) */}
               {(activeFilter === 'all' || activeFilter === 'security') && (
-                <Area 
-                  type="monotone" 
-                  dataKey="securityEvents" 
-                  stroke="#10B981" 
-                  strokeWidth={2.5} 
-                  fillOpacity={1} 
-                  fill="url(#secGrad)" 
-                  name="Security Defense Pass Rate" 
-                  activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }} 
+                <Area
+                  type="monotone"
+                  dataKey="securityEvents"
+                  stroke="#10B981"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#secGrad)"
+                  name="Security Defense Pass Rate"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }}
                 />
               )}
             </AreaChart>
@@ -594,14 +546,14 @@ export default function EnterpriseOverviewChart({
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} opacity={0.3} />
               <XAxis dataKey="time" stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
               <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dx={-10} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
-              
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#111827', 
-                  borderColor: '#374151', 
-                  borderRadius: '12px', 
-                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)', 
-                  color: '#F9FAFB' 
+
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#111827',
+                  borderColor: '#374151',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.6)',
+                  color: '#F9FAFB'
                 }}
                 itemStyle={{ fontWeight: 600 }}
                 cursor={{ stroke: '#4B5563', strokeWidth: 1, strokeDasharray: '4 4' }}
@@ -609,38 +561,38 @@ export default function EnterpriseOverviewChart({
               />
 
               {(activeFilter === 'all' || activeFilter === 'database') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="databaseThroughput" 
-                  stroke="#EF4444" 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="databaseThroughput"
+                  stroke="#EF4444"
+                  strokeWidth={3}
                   dot={{ r: 3, fill: '#EF4444' }}
-                  name="Database Capacity & Throughput" 
-                  activeDot={{ r: 6, strokeWidth: 0, fill: '#EF4444' }} 
+                  name="Database Capacity & Throughput"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#EF4444' }}
                 />
               )}
 
               {(activeFilter === 'all' || activeFilter === 'server') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="serverLoad" 
-                  stroke="#3B82F6" 
-                  strokeWidth={3} 
+                <Line
+                  type="monotone"
+                  dataKey="serverLoad"
+                  stroke="#3B82F6"
+                  strokeWidth={3}
                   dot={{ r: 3, fill: '#3B82F6' }}
-                  name="Server Cluster Compute" 
-                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }} 
+                  name="Server Cluster Compute"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }}
                 />
               )}
 
               {(activeFilter === 'all' || activeFilter === 'security') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="securityEvents" 
-                  stroke="#10B981" 
-                  strokeWidth={2.5} 
+                <Line
+                  type="monotone"
+                  dataKey="securityEvents"
+                  stroke="#10B981"
+                  strokeWidth={2.5}
                   dot={{ r: 3, fill: '#10B981' }}
-                  name="Security Defense Pass Rate" 
-                  activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }} 
+                  name="Security Defense Pass Rate"
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#10B981' }}
                 />
               )}
             </LineChart>

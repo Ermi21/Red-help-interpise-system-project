@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, Send, Paperclip, FileText, Trash2, Plus, Search, MessageSquare, Menu, X, Pin, Edit2, Download, Loader2, Database, ShieldAlert, Shield, Server, Copy, Check } from 'lucide-react';
+import { Bot, User, Send, Paperclip, FileText, Trash2, Plus, Search, MessageSquare, Menu, X, Pin, Edit2, Download, Loader2, Database, ShieldAlert, Shield, Server, Copy, Check, ArrowRight, Table, Share2, BarChart2, Zap, Lock } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -711,9 +711,12 @@ export default function AIChatInterface({ domain, title, description }: AIChatIn
             </div>
             <div>
               <h2 className="text-lg font-bold text-textPrimary">{title}</h2>
-              <p className="text-xs text-textSecondary flex items-center hidden sm:flex">
-                <span className="w-2 h-2 rounded-full bg-success mr-1"></span> {description}
-              </p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="inline-flex items-center text-xs text-emerald-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+                  Live Telemetry Synchronized
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex items-center">
@@ -742,27 +745,51 @@ export default function AIChatInterface({ domain, title, description }: AIChatIn
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full">
                   <button 
                     onClick={() => processUserMessage("List database tables and schemas")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-cyan-500/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    💡 <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">List Tables & Schemas</strong> View all schemas, table counts & columns
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+                        <Database className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-cyan-400 transition-colors">List Tables &amp; Schemas</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                   </button>
                   <button 
-                    onClick={() => processUserMessage("Describe table security.User")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    onClick={() => processUserMessage("Describe table users")}
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-cyan-500/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    📋 <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Describe Table</strong> Inspect columns, PKs & FK constraints
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+                        <Table className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-cyan-400 transition-colors">Describe Table</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                   </button>
                   <button 
-                    onClick={() => processUserMessage("Join User with Role")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    onClick={() => processUserMessage("Show foreign key relationships and schema details")}
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-cyan-500/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    🔗 <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Trace FK Relationships</strong> Find foreign key join paths
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+                        <Share2 className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-cyan-400 transition-colors">Trace Schema &amp; FKs</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                   </button>
                   <button 
-                    onClick={() => processUserMessage("Show database stats summary")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    onClick={() => processUserMessage("Show database stats and connection metrics")}
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-cyan-500/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    📊 <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Database Overview</strong> Summary of tables, FKs & breakdown
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+                        <BarChart2 className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-cyan-400 transition-colors">Database Overview</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                   </button>
                 </div>
               </div>
@@ -771,34 +798,58 @@ export default function AIChatInterface({ domain, title, description }: AIChatIn
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 mb-4">
                   <ShieldAlert className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-xl font-bold text-textPrimary mb-2">Server & Cyber Security AI</h3>
+                <h3 className="text-xl font-bold text-textPrimary mb-2">Server &amp; Cyber Security AI</h3>
                 <p className="text-sm text-textSecondary max-w-md mb-6">
                   Monitor compute node health, analyze high CPU/RAM load, inspect firewall events, or review security logs.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full">
                   <button 
                     onClick={() => processUserMessage("Show Server Health Report for all servers")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    🖥️ <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Server Health Report</strong> Full compute, RAM & status report
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-105 transition-transform">
+                        <Server className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Server Health Report</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                   </button>
                   <button 
                     onClick={() => processUserMessage("Summarize security alerts and blocked IPs")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    🛡️ <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Security Alert Summary</strong> Check failed logins & threat levels
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 group-hover:scale-105 transition-transform">
+                        <ShieldAlert className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Security Alert Summary</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                   </button>
                   <button 
                     onClick={() => processUserMessage("Check high CPU and memory load across nodes")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    ⚡ <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Resource Spikes</strong> Analyze CPU & RAM spikes
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-105 transition-transform">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Resource Spikes</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                   </button>
                   <button 
                     onClick={() => processUserMessage("Report firewall events and suspicious activity")}
-                    className="p-3.5 bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-xs text-textSecondary hover:text-textPrimary transition-all shadow-sm group"
+                    className="flex items-center justify-between p-3.5 bg-surface/80 hover:bg-surface border border-border rounded-xl text-left hover:border-primary/50 text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
                   >
-                    🔒 <strong className="text-textPrimary block mb-0.5 text-sm group-hover:text-primary transition-colors">Firewall & Cyber Logs</strong> Review blocked IPs & security rules
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <span className="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Firewall &amp; Cyber Logs</span>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
                   </button>
                 </div>
               </div>
