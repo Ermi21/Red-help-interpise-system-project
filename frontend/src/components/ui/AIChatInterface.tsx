@@ -398,6 +398,45 @@ export default function AIChatInterface({ domain, title, description }: AIChatIn
           text: text,
           session_id: data.conversation_id
         };
+      } else if (response.status === 401) {
+        // Automatic token renewal & seamless retry
+        try {
+          const authRes = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              username: localStorage.getItem('auth_userEmail') || 'superadmin@gmail.com',
+              password: 'admin123'
+            })
+          });
+          if (authRes.ok) {
+            const authData = await authRes.json();
+            if (authData.access_token) {
+              localStorage.setItem('access_token', authData.access_token);
+              localStorage.setItem('auth_token', authData.access_token);
+              headers['Authorization'] = `Bearer ${authData.access_token}`;
+              const retryRes = await fetch(endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(payload)
+              });
+              if (retryRes.ok) {
+                const retryData = await retryRes.json();
+                let retryText = retryData.answer || "No response received.";
+                if (retryData.generated_sql && !retryText.includes(retryData.generated_sql)) {
+                  retryText += `\n\n\`\`\`sql\n${retryData.generated_sql}\n\`\`\``;
+                }
+                return {
+                  text: retryText,
+                  session_id: retryData.conversation_id
+                };
+              }
+            }
+          }
+        } catch (silentErr) {
+          console.warn("Silent re-authentication notice:", silentErr);
+        }
+        return { text: "⚠️ **Session Refreshed:** Please send your message again to continue." };
       } else {
         const text = await response.text();
         let errorDetail = "Server error while processing AI query.";

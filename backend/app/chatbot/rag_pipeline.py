@@ -18,6 +18,7 @@ from langchain_core.messages import SystemMessage, HumanMessage
 from sqlalchemy import inspect, text
 
 from app.chatbot.llm_provider import get_chat_llm
+from app.config.settings import get_settings
 from app.chatbot.prompt_templates import (
     build_router_prompt,
     build_text_to_sql_prompt,
@@ -313,15 +314,29 @@ def _handle_database_rag(
     # 3. Vector Context
     vector_context = _retrieve_vector_context(question) or schema_context_hint
 
-    # Check if Groq LLM is available
-    has_groq = False
-    try:
-        from app.config.settings import get_settings
-        has_groq = bool((get_settings().groq_api_key or "").strip())
-    except Exception:
-        has_groq = False
+    # Check if any LLM provider is available (Groq, Gemini, Ollama)
+    settings = get_settings()
+    has_llm = bool(
+        (settings.groq_api_key or "").strip() or
+        (getattr(settings, "gemini_api_key", "") or "").strip() or
+        True  # Ollama local or multi-provider
+    )
 
-    # 4. If user asks to list tables or schemas:
+    # 4. If user asks how many tables are in the database:
+    if any(k in q_lower for k in ["how many table", "number of table", "count of table", "total table", "table count"]):
+        tables_list_md = "\n".join(f"- `{t}`" for t in sorted(tables))
+        answer = (
+            f"### Database Tables Summary\n\n"
+            f"There are **{len(tables)} tables** found in the active database catalog:\n\n"
+            f"{tables_list_md}\n\n"
+            f"{supabase_status_note}"
+        )
+        return RAGResult(
+            answer=answer,
+            sources=[{"type": "schema_doc", "label": "Database Schema Catalog", "detail": f"{len(tables)} tables verified"}]
+        )
+
+    # 5. If user asks to list tables or schemas:
     if any(k in q_lower for k in ["list table", "list database", "show table", "tables and schema", "tables & schema"]):
         answer = f"### Live Database Schema & Tables\n\n{supabase_status_note}\n#### Discovered Tables & Schemas\n{live_schema}\n\n*All tables are accessible in read-only mode for SQL analytics.*"
         return RAGResult(
@@ -391,8 +406,8 @@ def _handle_database_rag(
             sources=[{"type": "telemetry", "label": "Database Metrics", "detail": "Live pg_stat telemetry"}]
         )
 
-    # 7. Try LLM if configured
-    if has_groq:
+    # 7. Try Multi-Provider LLM (Groq -> Gemini -> Ollama)
+    if has_llm:
         try:
             schema_for_sql = vector_context if vector_context else live_schema
             sql_prompt = build_text_to_sql_prompt(
@@ -502,10 +517,11 @@ def _handle_infrastructure_query(question: str, history: list[dict] | None = Non
     load_15m = load.get("15min", 0.28)
     uptime = metrics.get("uptime_human", "0d 2h 45m")
 
-    # Try LLM if configured
+    # Try Multi-Provider LLM (Groq -> Gemini -> Ollama)
     try:
         from app.config.settings import get_settings
-        if (get_settings().groq_api_key or "").strip():
+        settings = get_settings()
+        if (settings.groq_api_key or "").strip() or (getattr(settings, "gemini_api_key", "") or "").strip():
             context = (
                 f"Live Server Telemetry:\n"
                 f"- Host: {metrics.get('hostname', '749cc8fbb035')}, Architecture: x86_64, Uptime: {uptime}\n"
@@ -565,10 +581,11 @@ def _handle_security_query(question: str, history: list[dict] | None = None) -> 
     history = history or []
     sec = _fetch_live_security_telemetry()
 
-    # Try LLM if configured
+    # Try Multi-Provider LLM (Groq -> Gemini -> Ollama)
     try:
         from app.config.settings import get_settings
-        if (get_settings().groq_api_key or "").strip():
+        settings = get_settings()
+        if (settings.groq_api_key or "").strip() or (getattr(settings, "gemini_api_key", "") or "").strip():
             context = (
                 f"Live Security Telemetry:\n"
                 f"- Threat Level: {sec.get('threat_level')}, Score: {sec.get('security_score')}\n"

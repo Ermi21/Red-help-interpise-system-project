@@ -217,9 +217,40 @@ def get_database_metrics(_: CurrentUser = Depends(get_current_user)):
                 metrics["connection_status"] = "degraded"
 
     except Exception as exc:
-        metrics["connection_status"] = "error"
-        metrics["errors"].append(str(exc))
-        logger.warning("Database metrics collection failed: %s", exc)
+        logger.warning("Target database metrics collection failed: %s, falling back to operational cluster DB", exc)
+        try:
+            app_eng = get_app_engine()
+            with app_eng.connect() as conn:
+                row = conn.execute(text(BATCHED_SQL)).mappings().first()
+                row = dict(row) if row else None
+                if row:
+                    metrics["connection_status"] = "connected (Cluster DB)"
+                    ver_str = row.get("db_version") or ""
+                    metrics["database_version"] = " ".join(ver_str.split()[:3])
+                    metrics["active_connections"] = row.get("active_connections")
+
+                    size_bytes = row.get("size_bytes") or 0
+                    metrics["database_size_bytes"] = size_bytes
+                    if size_bytes > 1_073_741_824:
+                        metrics["database_size_human"] = f"{size_bytes / 1_073_741_824:.2f} GB"
+                    elif size_bytes > 1_048_576:
+                        metrics["database_size_human"] = f"{size_bytes / 1_048_576:.2f} MB"
+                    else:
+                        metrics["database_size_human"] = f"{size_bytes / 1024:.1f} KB"
+
+                    metrics["schema_count"] = row.get("schema_count")
+                    metrics["table_count"] = row.get("table_count")
+
+                    cache_ratio = row.get("cache_hit_ratio")
+                    if cache_ratio is not None:
+                        metrics["cache_hit_ratio"] = float(cache_ratio)
+
+                    metrics["total_transactions"] = int(row.get("total_transactions") or 0)
+                    metrics["deadlocks"]          = int(row.get("deadlocks")          or 0)
+                    metrics["temp_files"]         = int(row.get("temp_files")         or 0)
+        except Exception as e2:
+            metrics["connection_status"] = "error"
+            metrics["errors"].append(str(e2))
 
     # Cache the result (even on partial failure so we don't hammer the DB)
     _db_cache = metrics
@@ -556,89 +587,93 @@ def get_notifications(_: CurrentUser = Depends(get_current_user)):
     except Exception as exc:
         logger.debug("Notifications: alerts query skipped: %s", exc)
 
-    # 2. Supabase Target DB Admin Notifications & Audit Logs
+    # 2. Supabase Target DB Admin Notifications & Audit Logs (if target DB configured & active)
     try:
-        t_engine = get_target_engine()
-        with t_engine.connect() as conn:
-            sb_rows = conn.execute(text(
-                """SELECT id, message, status, audience_type, created_at, failure_reason
-                   FROM public.notifications
-                   ORDER BY created_at DESC
-                   LIMIT 40"""
-            )).mappings().all()
+        from app.config.settings import get_settings
+        settings = get_settings()
+        target_configured = bool(settings.target_db_url and "company-db-host" not in settings.target_db_url)
+        if target_configured:
+            t_engine = get_target_engine()
+            with t_engine.connect() as conn:
+                sb_rows = conn.execute(text(
+                    """SELECT id, message, status, audience_type, created_at, failure_reason
+                       FROM public.notifications
+                       ORDER BY created_at DESC
+                       LIMIT 40"""
+                )).mappings().all()
 
-            for r in sb_rows:
-                r = dict(r)
-                msg = r.get("message") or ""
-                msg_lower = msg.lower()
-                st = (r.get("status") or "").upper()
-                fail_reason = r.get("failure_reason")
-                ts = r.get("created_at")
+                for r in sb_rows:
+                    r = dict(r)
+                    msg = r.get("message") or ""
+                    msg_lower = msg.lower()
+                    st = (r.get("status") or "").upper()
+                    fail_reason = r.get("failure_reason")
+                    ts = r.get("created_at")
 
-                if "suspended" in msg_lower or "blocked" in msg_lower or "locked" in msg_lower or st == "FAILED" or fail_reason:
-                    sev = "critical"
-                    cat = "Account Suspension"
-                    title = "Critical Admin Action: User Suspended"
-                    mitigation = "Review administrator suspension reason and verify user audit logs."
-                elif "reactivated" in msg_lower or "approved" in msg_lower:
-                    sev = "low"
-                    cat = "Registration Approval"
-                    title = "Admin Action: Registration Approved"
-                    mitigation = "No action required. Account active."
-                elif "pending" in msg_lower or "review" in msg_lower:
-                    sev = "medium"
-                    cat = "Registration Review"
-                    title = "Review Required: Registration Pending"
-                    mitigation = "Verify identity documents in administrative dashboard."
-                else:
-                    sev = "medium"
-                    cat = "Administrative Notification"
-                    title = "Supabase Admin Broadcast"
-                    mitigation = "Review notification dispatch status in Supabase."
+                    if "suspended" in msg_lower or "blocked" in msg_lower or "locked" in msg_lower or st == "FAILED" or fail_reason:
+                        sev = "critical"
+                        cat = "Account Suspension"
+                        title = "Critical Admin Action: User Suspended"
+                        mitigation = "Review administrator suspension reason and verify user audit logs."
+                    elif "reactivated" in msg_lower or "approved" in msg_lower:
+                        sev = "low"
+                        cat = "Registration Approval"
+                        title = "Admin Action: Registration Approved"
+                        mitigation = "No action required. Account active."
+                    elif "pending" in msg_lower or "review" in msg_lower:
+                        sev = "medium"
+                        cat = "Registration Review"
+                        title = "Review Required: Registration Pending"
+                        mitigation = "Verify identity documents in administrative dashboard."
+                    else:
+                        sev = "medium"
+                        cat = "Administrative Notification"
+                        title = "Supabase Admin Broadcast"
+                        mitigation = "Review notification dispatch status in Supabase."
 
-                notifications.append({
-                    "id": f"supabase_{r.get('id')}",
-                    "title": title,
-                    "message": msg,
-                    "type": "critical" if sev == "critical" else "warning" if sev == "medium" else "info",
-                    "severity": sev,
-                    "category": cat,
-                    "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
-                    "is_read": False,
-                    "source": "Supabase Admin",
-                    "mitigation": mitigation,
-                    "affected": f"Audience: {r.get('audience_type', 'INDIVIDUAL')}",
-                })
+                    notifications.append({
+                        "id": f"supabase_{r.get('id')}",
+                        "title": title,
+                        "message": msg,
+                        "type": "critical" if sev == "critical" else "warning" if sev == "medium" else "info",
+                        "severity": sev,
+                        "category": cat,
+                        "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
+                        "is_read": False,
+                        "source": "Supabase Admin",
+                        "mitigation": mitigation,
+                        "affected": f"Audience: {r.get('audience_type', 'INDIVIDUAL')}",
+                    })
 
-            # Also fetch administrative actions from Supabase activity_logs
-            act_rows = conn.execute(text(
-                """SELECT id, action, entity_type, entity_id, created_at
-                   FROM public.activity_logs
-                   WHERE action ILIKE '%suspend%' OR action ILIKE '%delete%' OR action ILIKE '%security%' OR action ILIKE '%resumed%'
-                   ORDER BY created_at DESC
-                   LIMIT 20"""
-            )).mappings().all()
+                # Also fetch administrative actions from Supabase activity_logs
+                act_rows = conn.execute(text(
+                    """SELECT id, action, entity_type, entity_id, created_at
+                       FROM public.activity_logs
+                       WHERE action ILIKE '%suspend%' OR action ILIKE '%delete%' OR action ILIKE '%security%' OR action ILIKE '%resumed%'
+                       ORDER BY created_at DESC
+                       LIMIT 20"""
+                )).mappings().all()
 
-            for ar in act_rows:
-                ar = dict(ar)
-                act = ar.get("action") or "admin.action"
-                act_lower = act.lower()
-                sev = "critical" if "suspend" in act_lower or "delete" in act_lower else "low" if "resumed" in act_lower else "medium"
-                ts = ar.get("created_at")
-                cat = "Administrative Suspension" if "suspend" in act_lower else "Administrative Audit Action"
-                notifications.append({
-                    "id": f"act_{ar.get('id')}",
-                    "title": f"Supabase Admin: {act.replace('_', ' ').replace('.', ' ').title()}",
-                    "message": f"Administrator executed {act} on {ar.get('entity_type', 'entity')} (ID: {ar.get('entity_id')}).",
-                    "type": "critical" if sev == "critical" else "warning" if sev == "medium" else "info",
-                    "severity": sev,
-                    "category": cat,
-                    "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
-                    "is_read": False,
-                    "source": "Supabase Audit Log",
-                    "mitigation": "Investigate administrator audit trail if action was unauthorized.",
-                    "affected": f"{ar.get('entity_type', 'Entity')}: {ar.get('entity_id')}",
-                })
+                for ar in act_rows:
+                    ar = dict(ar)
+                    act = ar.get("action") or "admin.action"
+                    act_lower = act.lower()
+                    sev = "critical" if "suspend" in act_lower or "delete" in act_lower else "low" if "resumed" in act_lower else "medium"
+                    ts = ar.get("created_at")
+                    cat = "Administrative Suspension" if "suspend" in act_lower else "Administrative Audit Action"
+                    notifications.append({
+                        "id": f"act_{ar.get('id')}",
+                        "title": f"Supabase Admin: {act.replace('_', ' ').replace('.', ' ').title()}",
+                        "message": f"Administrator executed {act} on {ar.get('entity_type', 'entity')} (ID: {ar.get('entity_id')}).",
+                        "type": "critical" if sev == "critical" else "warning" if sev == "medium" else "info",
+                        "severity": sev,
+                        "category": cat,
+                        "created_at": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or now_iso),
+                        "is_read": False,
+                        "source": "Supabase Audit Log",
+                        "mitigation": "Investigate administrator audit trail if action was unauthorized.",
+                        "affected": f"{ar.get('entity_type', 'Entity')}: {ar.get('entity_id')}",
+                    })
     except Exception as exc:
         logger.debug("Notifications: Supabase query skipped: %s", exc)
 

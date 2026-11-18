@@ -128,33 +128,36 @@ def get_schema_overview(_: CurrentUser = Depends(get_current_user)):
     masked_url = re.sub(r':([^:@]+)@', ':***@', configured_url) if '@' in configured_url else configured_url
 
     try:
-        target_engine = get_target_engine()
-        with target_engine.connect() as conn:
-            target_rows = conn.execute(text("""
-                SELECT
-                    t.table_name,
-                    COUNT(c.column_name) AS col_count,
-                    array_agg(c.column_name ORDER BY c.ordinal_position) AS col_names
-                FROM information_schema.tables t
-                JOIN information_schema.columns c
-                  ON c.table_name = t.table_name
-                 AND c.table_schema = t.table_schema
-                WHERE t.table_schema = 'public'
-                  AND t.table_type = 'BASE TABLE'
-                GROUP BY t.table_name
-                ORDER BY t.table_name
-                LIMIT 50
-            """)).mappings().all()
+        if configured_url and "company-db-host" not in configured_url:
+            target_engine = get_target_engine()
+            with target_engine.connect() as conn:
+                target_rows = conn.execute(text("""
+                    SELECT
+                        t.table_name,
+                        COUNT(c.column_name) AS col_count,
+                        array_agg(c.column_name ORDER BY c.ordinal_position) AS col_names
+                    FROM information_schema.tables t
+                    JOIN information_schema.columns c
+                      ON c.table_name = t.table_name
+                     AND c.table_schema = t.table_schema
+                    WHERE t.table_schema = 'public'
+                      AND t.table_type = 'BASE TABLE'
+                    GROUP BY t.table_name
+                    ORDER BY t.table_name
+                    LIMIT 50
+                """)).mappings().all()
 
-            for r in target_rows:
-                target_tables_info.append({
-                    "name": r["table_name"],
-                    "columns": r["col_count"],
-                    "rows": 0,          # skip per-table COUNT(*) — too slow
-                    "engine": "PostgreSQL (Target)",
-                    "column_names": list(r["col_names"] or []),
-                })
-        target_db_status = "Online & Verified"
+                for r in target_rows:
+                    target_tables_info.append({
+                        "name": r["table_name"],
+                        "columns": r["col_count"],
+                        "rows": 0,          # skip per-table COUNT(*) — too slow
+                        "engine": "PostgreSQL (Target)",
+                        "column_names": list(r["col_names"] or []),
+                    })
+            target_db_status = "Online & Verified"
+        else:
+            target_db_status = "Standby (Configurable in DB Settings)"
     except Exception as exc:
         target_error = str(exc).strip()
         target_db_status = "Action Required"

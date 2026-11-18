@@ -34,12 +34,16 @@ class Settings(BaseSettings):
     # --- JWT ---
     jwt_secret_key: str
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 60
+    jwt_access_token_expire_minutes: int = 10080
 
-    # --- Groq chat generation ---
+    # --- LLM Providers & Multi-Model Switching (Groq / Gemini / Ollama) ---
     groq_api_key: str = ""
-    groq_chat_model: str = "openai/gpt-oss-120b"
+    groq_chat_model: str = "llama-3.3-70b-versatile"
     groq_request_timeout_s: int = 60
+
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-1.5-flash"
+    gemini_request_timeout_s: int = 60
 
     # --- Ollama embeddings (optional) ---
     ollama_base_url: str = "http://localhost:11434"
