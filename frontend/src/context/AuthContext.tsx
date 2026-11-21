@@ -283,6 +283,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nowLoginTime = new Date().toISOString();
+    const savedAvatar = localStorage.getItem('auth_avatar');
+    if (savedAvatar) {
+      setAvatar(savedAvatar);
+    }
     setIsAuthenticated(true);
     setUserEmail(email);
     setRole(userRole);
@@ -322,6 +326,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateAvatar = async (base64Image: string) => {
     setAvatar(base64Image);
     localStorage.setItem('auth_avatar', base64Image);
+    window.dispatchEvent(new Event('auth_avatar_changed'));
     if (userEmail) {
       try {
         const authUrl = import.meta.env.VITE_N8N_AUTH_URL || 'http://localhost:5678/webhook/erp-auth';

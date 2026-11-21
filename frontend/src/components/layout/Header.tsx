@@ -13,12 +13,39 @@ interface HeaderProps {
 }
 
 export default function Header({ onMenuToggle, isCollapsed, onDesktopToggle }: HeaderProps) {
-  const { userEmail, logout, role } = useAuth();
+  const { userEmail, logout, role, avatar } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [currentAvatar, setCurrentAvatar] = useState<string | null>(() => {
+    return avatar || localStorage.getItem('auth_avatar');
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (avatar) {
+      setCurrentAvatar(avatar);
+    } else {
+      const stored = localStorage.getItem('auth_avatar');
+      if (stored) setCurrentAvatar(stored);
+    }
+  }, [avatar]);
+
+  useEffect(() => {
+    const handleAvatarSync = () => {
+      const stored = localStorage.getItem('auth_avatar');
+      setCurrentAvatar(stored);
+    };
+    window.addEventListener('auth_avatar_changed', handleAvatarSync);
+    window.addEventListener('storage', handleAvatarSync);
+    const userPhoto = avatar || currentAvatar || localStorage.getItem('auth_avatar');
+
+  return () => {
+      window.removeEventListener('auth_avatar_changed', handleAvatarSync);
+      window.removeEventListener('storage', handleAvatarSync);
+    };
+  }, []);
 
   useEffect(() => {
     fetchRealNotifications().then(data => setNotifications(data));
@@ -32,12 +59,16 @@ export default function Header({ onMenuToggle, isCollapsed, onDesktopToggle }: H
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const userPhoto = avatar || currentAvatar || localStorage.getItem('auth_avatar');
+
+  return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
 
 
 
+
+  const userPhoto = avatar || currentAvatar || localStorage.getItem('auth_avatar');
 
   return (
     <header className="h-16 bg-surface/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 w-full">
@@ -152,13 +183,28 @@ export default function Header({ onMenuToggle, isCollapsed, onDesktopToggle }: H
         </div>
         
         <div className="flex items-center space-x-2 md:space-x-3 border-l border-border pl-3 md:pl-4">
-          <div className="flex flex-col justify-center text-right hidden sm:block">
-            <span className="text-sm font-medium text-textPrimary">
+          <div 
+            onClick={() => navigate('/dashboard/profile')}
+            className="flex flex-col justify-center text-right hidden sm:block cursor-pointer group"
+          >
+            <span className="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">
               {userEmail ? userEmail.split('@')[0].split('.')[0].charAt(0).toUpperCase() + userEmail.split('@')[0].split('.')[0].slice(1) : 'Admin'}
             </span>
           </div>
-          <div className="h-8 w-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold">
-            {userEmail ? userEmail.charAt(0).toUpperCase() : 'A'}
+          <div 
+            onClick={() => navigate('/dashboard/profile')}
+            className="h-9 w-9 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center text-primary font-bold overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/60 transition-all shadow-sm flex-shrink-0"
+            title="Profile & Settings"
+          >
+            {userPhoto ? (
+              <img 
+                src={userPhoto} 
+                alt="Profile Avatar" 
+                className="h-full w-full object-cover rounded-full" 
+              />
+            ) : (
+              <span>{userEmail ? userEmail.charAt(0).toUpperCase() : 'A'}</span>
+            )}
           </div>
           <button 
             onClick={logout}

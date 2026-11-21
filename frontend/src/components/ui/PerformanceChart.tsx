@@ -24,6 +24,14 @@ interface PerformanceChartProps {
   memoryName?: string;
   subtitle?: string;
   badge?: string;
+  primaryKey?: string;
+  secondaryKey?: string;
+  primaryName?: string;
+  secondaryName?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  domain?: [number, number];
+  unit?: string;
 }
 
 export default function PerformanceChart({ 
@@ -32,10 +40,24 @@ export default function PerformanceChart({
   cpuName = "CPU Usage %",
   memoryName = "Memory Usage %",
   subtitle,
-  badge
+  badge,
+  primaryKey = "memory",
+  secondaryKey = "cpu",
+  primaryName,
+  secondaryName,
+  primaryColor = "#3B82F6",
+  secondaryColor = "#EF4444",
+  domain = [0, 100],
+  unit = "%"
 }: PerformanceChartProps) {
   const [timeframe, setTimeframe] = useState('Last 24 Hours');
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  const pName = primaryName || memoryName;
+  const sName = secondaryName || cpuName;
+  const safeId = title.replace(/[^a-zA-Z0-9]/g, '_');
+  const grad1Id = `grad_${primaryKey}_${safeId}`;
+  const grad2Id = `grad_${secondaryKey}_${safeId}`;
 
   // Update current time state every second to drive real-time X-axis ticking
   useEffect(() => {
@@ -104,26 +126,26 @@ export default function PerformanceChart({
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={liveData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
-              <linearGradient id="colorCpu" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#EF4444" stopOpacity={0.6}/>
-                <stop offset="95%" stopColor="#EF4444" stopOpacity={0.05}/>
+              <linearGradient id={grad1Id} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={primaryColor} stopOpacity={0.6}/>
+                <stop offset="95%" stopColor={primaryColor} stopOpacity={0.05}/>
               </linearGradient>
-              <linearGradient id="colorMemory" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.6}/>
-                <stop offset="95%" stopColor="#3B82F6" stopOpacity={0.05}/>
+              <linearGradient id={grad2Id} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={secondaryColor} stopOpacity={0.6}/>
+                <stop offset="95%" stopColor={secondaryColor} stopOpacity={0.05}/>
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} opacity={0.3} />
             <XAxis dataKey="time" stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dy={10} />
-            <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dx={-10} domain={[0, 100]} tickFormatter={(v) => `${v}%`} />
+            <YAxis stroke="#94A3B8" fontSize={12} tickLine={false} axisLine={false} dx={-10} domain={domain} tickFormatter={(v) => `${v}${unit}`} />
             <Tooltip 
               contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '12px', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)', color: '#F9FAFB' }}
               itemStyle={{ fontWeight: 600 }}
               cursor={{ stroke: '#4B5563', strokeWidth: 1, strokeDasharray: '4 4' }}
-              formatter={(value: any, name: any) => [`${value}%`, name]}
+              formatter={(value: any, name: any) => [`${value}${unit}`, name]}
             />
-            <Area type="monotone" dataKey="memory" stroke="#3B82F6" strokeWidth={3} fillOpacity={1} fill="url(#colorMemory)" name={memoryName} activeDot={{ r: 6, strokeWidth: 0, fill: '#3B82F6' }} />
-            <Area type="monotone" dataKey="cpu" stroke="#EF4444" strokeWidth={3} fillOpacity={1} fill="url(#colorCpu)" name={cpuName} activeDot={{ r: 6, strokeWidth: 0, fill: '#EF4444' }} />
+            <Area type="monotone" dataKey={primaryKey} stroke={primaryColor} strokeWidth={3} fillOpacity={1} fill={`url(#${grad1Id})`} name={pName} activeDot={{ r: 6, strokeWidth: 0, fill: primaryColor }} />
+            <Area type="monotone" dataKey={secondaryKey} stroke={secondaryColor} strokeWidth={3} fillOpacity={1} fill={`url(#${grad2Id})`} name={sName} activeDot={{ r: 6, strokeWidth: 0, fill: secondaryColor }} />
           </AreaChart>
         </ResponsiveContainer>
       </div>

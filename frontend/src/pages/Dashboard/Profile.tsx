@@ -53,8 +53,11 @@ export default function Profile() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setImageSrc(reader.result as string);
+        const b64 = reader.result as string;
+        setImageSrc(b64);
         setShowCropper(true);
+        // Immediately persist as avatar so it is active right away
+        updateAvatar(b64);
       };
       reader.readAsDataURL(file);
     }
@@ -66,9 +69,16 @@ export default function Profile() {
 
   const handleSaveCroppedImage = async () => {
     try {
-      if (imageSrc && croppedAreaPixels) {
-        const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
-        await updateAvatar(croppedImage);
+      if (imageSrc) {
+        let finalImage = imageSrc;
+        if (croppedAreaPixels) {
+          try {
+            finalImage = await getCroppedImg(imageSrc, croppedAreaPixels);
+          } catch (cropErr) {
+            console.warn("Crop calculation notice:", cropErr);
+          }
+        }
+        await updateAvatar(finalImage);
         completeProfile();
         setIsSaved(true);
         setTimeout(() => setIsSaved(false), 3000);

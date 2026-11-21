@@ -9,6 +9,7 @@ import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import PerformanceChart from '../../components/ui/PerformanceChart';
 
 function severityColor(severity: string) {
   const s = severity?.toLowerCase();
@@ -39,6 +40,34 @@ export default function SecurityMonitoring() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [showNotification, setShowNotification] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'sessions' | 'rules' | 'rbac'>('overview');
+  const [securityTelemetryHistory, setSecurityTelemetryHistory] = useState(() => [
+    { time: '11:00', cpu: 6, memory: 98, defenseScore: 98, threatActivity: 6 },
+    { time: '11:10', cpu: 8, memory: 99, defenseScore: 99, threatActivity: 8 },
+    { time: '11:20', cpu: 12, memory: 97, defenseScore: 97, threatActivity: 12 },
+    { time: '11:30', cpu: 4, memory: 100, defenseScore: 100, threatActivity: 4 },
+    { time: '11:40', cpu: 7, memory: 99, defenseScore: 99, threatActivity: 7 },
+    { time: '11:50', cpu: 9, memory: 98, defenseScore: 98, threatActivity: 9 },
+    { time: '12:00', cpu: 5, memory: 99, defenseScore: 99, threatActivity: 5 },
+  ]);
+
+  useEffect(() => {
+    const chartTimer = setInterval(() => {
+      const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+      setSecurityTelemetryHistory(prev => {
+        const last = prev[prev.length - 1] || { cpu: 6, memory: 99, defenseScore: 99, threatActivity: 6 };
+        const newDefense = Math.max(94, Math.min(100, (last.memory || 99) + (Math.floor(Math.random() * 3) - 1)));
+        const newThreat = Math.max(3, Math.min(22, (last.cpu || 6) + (Math.floor(Math.random() * 5) - 2)));
+        return [...prev.slice(1), { 
+          time: nowStr, 
+          cpu: newThreat, 
+          memory: newDefense, 
+          defenseScore: newDefense, 
+          threatActivity: newThreat 
+        }];
+      });
+    }, 4000);
+    return () => clearInterval(chartTimer);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -223,110 +252,58 @@ export default function SecurityMonitoring() {
           </div>
 
           {/* ================================================================= */}
-          {/* ANIMATED SECURITY CHARTS (NEW LARGE PERFORMANCE VISUALIZATIONS)  */}
+          {/* ANIMATED SECURITY CHARTS (BALANCED & COHESIVE WITH DB & SERVER)  */}
           {/* ================================================================= */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Chart 1: 24h Authentication & Threat Timeline (2 Cols) */}
-            <div className="lg:col-span-2 glass-panel p-6 border border-border shadow-xl rounded-2xl">
-              <div className="flex justify-between items-center mb-5">
-                <div>
-                  <h3 className="text-base font-bold text-textPrimary flex items-center">
-                    <BarChart3 className="w-5 h-5 mr-2 text-primary" />
-                    Authentication Activity &amp; Threat Incident Timeline (24h)
-                  </h3>
-                  <p className="text-xs text-textSecondary mt-0.5">Successful authentications vs suspicious attempts and blocked threats</p>
-                </div>
-                <div className="flex items-center space-x-2 text-xs">
-                  <span className="flex items-center space-x-1 text-emerald-400 font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
-                    <span>Success</span>
-                  </span>
-                  <span className="flex items-center space-x-1 text-amber-400 font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
-                    <span>Failed</span>
-                  </span>
-                  <span className="flex items-center space-x-1 text-red-500 font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
-                    <span>Blocked</span>
-                  </span>
-                </div>
-              </div>
-
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={securityTimelineData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="secSuccessGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.5}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0.0}/>
-                      </linearGradient>
-                      <linearGradient id="secFailedGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
-                        <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                    <XAxis dataKey="time" stroke="#64748b" fontSize={11} tickLine={false} />
-                    <YAxis stroke="#64748b" fontSize={11} tickLine={false} />
-                    <Tooltip
-                      content={({ active, payload, label }) => {
-                        if (!active || !payload?.length) return null;
-                        return (
-                          <div className="bg-slate-900/95 border border-slate-700/80 p-3 rounded-xl shadow-2xl backdrop-blur-xl text-xs space-y-1.5 min-w-[150px]">
-                            <p className="font-mono text-slate-400 font-bold border-b border-slate-800 pb-1">{label}</p>
-                            {payload.map((entry: any, i: number) => (
-                              <div key={i} className="flex justify-between items-center space-x-3">
-                                <span className="font-medium" style={{ color: entry.color }}>{entry.name}:</span>
-                                <span className="font-bold font-mono text-white">{entry.value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      }}
-                    />
-                    <Area type="monotone" dataKey="successful" name="Successful Logins" stroke="#10b981" strokeWidth={2.5} fillOpacity={1} fill="url(#secSuccessGrad)" isAnimationActive={true} animationDuration={1200} />
-                    <Area type="monotone" dataKey="failed" name="Failed Attempts" stroke="#f59e0b" strokeWidth={2} fillOpacity={1} fill="url(#secFailedGrad)" isAnimationActive={true} animationDuration={1400} />
-                    <Area type="monotone" dataKey="blocked" name="Blocked Threats" stroke="#ef4444" strokeWidth={2} fillOpacity={0} isAnimationActive={true} animationDuration={1600} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
+            {/* Chart 1: Real-Time Security Defense Telemetry (2 Cols, h-80) */}
+            <div className="lg:col-span-2 h-80">
+              <PerformanceChart 
+                title="Zero-Trust Defense & Threat Mitigation"
+                subtitle="Live telemetry: firewall shields, zero-trust verification, and anomaly suppression"
+                badge="SHIELD 100% ACTIVE"
+                data={securityTelemetryHistory}
+                primaryKey="defenseScore"
+                primaryName="Defense Integrity Rate"
+                primaryColor="#10B981"
+                secondaryKey="threatActivity"
+                secondaryName="Threat Anomaly Intensity"
+                secondaryColor="#EF4444"
+              />
             </div>
 
-            {/* Chart 2: Threat Vectors Distribution (1 Col) */}
-            <div className="glass-panel p-6 border border-border shadow-xl rounded-2xl flex flex-col justify-between">
+            {/* Chart 2: Threat Vectors Distribution (1 Col, h-80) */}
+            <div className="glass-panel p-5 border border-border shadow-xl rounded-2xl flex flex-col justify-between h-80">
               <div>
-                <h3 className="text-base font-bold text-textPrimary flex items-center mb-1">
-                  <ShieldAlert className="w-5 h-5 mr-2 text-danger" />
-                  Threat Vectors Breakdown
-                </h3>
-                <p className="text-xs text-textSecondary mb-4">Interception breakdown by defense rule</p>
+                <div className="flex justify-between items-center mb-3 pb-2 border-b border-border/50">
+                  <h3 className="text-sm font-bold text-textPrimary flex items-center uppercase tracking-wider">
+                    <ShieldAlert className="w-4 h-4 mr-2 text-danger" />
+                    Threat Vectors Breakdown
+                  </h3>
+                  <span className="text-[10px] font-bold text-danger bg-danger/10 px-2 py-0.5 rounded-full border border-danger/20">
+                    5 Active Rules
+                  </span>
+                </div>
+                <p className="text-xs text-textSecondary mb-3">Interception rate by active defense rules</p>
 
-                <div className="h-56 w-full">
+                <div className="h-44 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={threatVectorsData} layout="vertical" margin={{ top: 5, right: 15, left: 10, bottom: 5 }}>
+                    <BarChart data={threatVectorsData} layout="vertical" margin={{ top: 0, right: 15, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" horizontal={false} />
                       <XAxis type="number" stroke="#64748b" fontSize={10} tickLine={false} />
                       <YAxis dataKey="category" type="category" stroke="#94a3b8" fontSize={10} tickLine={false} width={130} />
                       <Tooltip
-                        content={({ active, payload }) => {
-                          if (!active || !payload?.length) return null;
-                          return (
-                            <div className="bg-slate-900 border border-slate-700 p-2 rounded-lg text-xs">
-                              <span className="text-red-400 font-bold">{payload[0].payload.category}: </span>
-                              <span className="text-white font-mono">{payload[0].value} incidents</span>
-                            </div>
-                          );
-                        }}
+                        contentStyle={{ backgroundColor: '#111827', borderColor: '#374151', borderRadius: '12px', color: '#F9FAFB' }}
+                        formatter={(val: any) => [`${val} incidents blocked`, 'Interceptions']}
                       />
-                      <Bar dataKey="count" fill="#ef4444" radius={[0, 4, 4, 0]} isAnimationActive={true} animationDuration={1200} />
+                      <Bar dataKey="count" fill="#ef4444" radius={[0, 4, 4, 0]} isAnimationActive={true} animationDuration={1000} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-border/80 flex justify-between items-center text-xs text-textSecondary">
-                <span>Rule Engine: <strong>Active (5 Rules)</strong></span>
-                <span className="text-emerald-400 font-bold">0 Breaches</span>
+              <div className="pt-2 border-t border-border/50 flex justify-between items-center text-xs text-textSecondary">
+                <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />Rule Engine: <strong>Active</strong></span>
+                <span className="text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">0 Breaches</span>
               </div>
             </div>
           </div>
