@@ -149,6 +149,11 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
 
+    @app.api_route("/", methods=["GET", "HEAD"], tags=["Root"])
+    def root():
+        """Root endpoint for cloud platform health checks (Render, AWS, etc.)."""
+        return {"status": "online", "service": settings.app_name, "version": "1.0.0"}
+
 
     @app.get("/healthz", response_model=HealthCheckResponse, tags=["Service Health"])
     def liveness():

@@ -6,8 +6,11 @@ This store holds ONLY documentation/metadata WE generated about the target
 database — never raw customer row data — so there is no risk of sensitive
 records leaking into embeddings at rest.
 """
+import os
+os.environ["ANONYMIZED_TELEMETRY"] = "False"
 from functools import lru_cache
 
+import chromadb.config
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 
@@ -26,6 +29,7 @@ def get_vector_store() -> Chroma:
         collection_name=settings.chroma_collection_name,
         embedding_function=get_embedding_function(),
         persist_directory=settings.chroma_persist_dir,
+        client_settings=chromadb.config.Settings(anonymized_telemetry=False),
     )
 
 
