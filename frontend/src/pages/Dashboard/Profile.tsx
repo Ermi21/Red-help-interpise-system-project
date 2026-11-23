@@ -230,8 +230,12 @@ export default function Profile() {
                 <div className="w-32 h-32 rounded-full bg-primary/20 border-[3px] border-primary flex items-center justify-center text-primary font-bold text-4xl mb-6 relative overflow-hidden cursor-pointer shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] hover:scale-105 transition-transform"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {avatar ? (
-                    <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                  {avatar || localStorage.getItem('auth_avatar') || localStorage.getItem('app_persistent_avatar') ? (
+                    <img 
+                      src={avatar || localStorage.getItem('auth_avatar') || localStorage.getItem('app_persistent_avatar') || ''} 
+                      alt="Profile" 
+                      className="w-full h-full object-cover" 
+                    />
                   ) : (
                     userEmail ? userEmail.charAt(0).toUpperCase() : 'A'
                   )}

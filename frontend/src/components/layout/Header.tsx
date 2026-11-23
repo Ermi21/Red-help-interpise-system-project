@@ -18,34 +18,34 @@ export default function Header({ onMenuToggle, isCollapsed, onDesktopToggle }: H
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [currentAvatar, setCurrentAvatar] = useState<string | null>(() => {
-    return avatar || localStorage.getItem('auth_avatar');
-  });
+  const resolvePhoto = () => {
+    if (avatar) return avatar;
+    const emailClean = (userEmail || localStorage.getItem('auth_userEmail') || '').toLowerCase().trim();
+    return localStorage.getItem('auth_avatar') ||
+           (emailClean ? localStorage.getItem(`user_avatar_${emailClean}`) : null) ||
+           (emailClean.includes('superadmin') ? localStorage.getItem('user_avatar_superadmin') : null) ||
+           localStorage.getItem('app_persistent_avatar');
+  };
+
+  const [currentAvatar, setCurrentAvatar] = useState<string | null>(() => resolvePhoto());
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (avatar) {
-      setCurrentAvatar(avatar);
-    } else {
-      const stored = localStorage.getItem('auth_avatar');
-      if (stored) setCurrentAvatar(stored);
-    }
-  }, [avatar]);
+    setCurrentAvatar(resolvePhoto());
+  }, [avatar, userEmail]);
 
   useEffect(() => {
     const handleAvatarSync = () => {
-      const stored = localStorage.getItem('auth_avatar');
-      setCurrentAvatar(stored);
+      setCurrentAvatar(resolvePhoto());
     };
     window.addEventListener('auth_avatar_changed', handleAvatarSync);
     window.addEventListener('storage', handleAvatarSync);
-    const userPhoto = avatar || currentAvatar || localStorage.getItem('auth_avatar');
 
-  return () => {
+    return () => {
       window.removeEventListener('auth_avatar_changed', handleAvatarSync);
       window.removeEventListener('storage', handleAvatarSync);
     };
-  }, []);
+  }, [userEmail]);
 
   useEffect(() => {
     fetchRealNotifications().then(data => setNotifications(data));
@@ -59,16 +59,11 @@ export default function Header({ onMenuToggle, isCollapsed, onDesktopToggle }: H
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
-    const userPhoto = avatar || currentAvatar || localStorage.getItem('auth_avatar');
 
-  return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-
-
-
-  const userPhoto = avatar || currentAvatar || localStorage.getItem('auth_avatar');
+  const userPhoto = currentAvatar || resolvePhoto();
 
   return (
     <header className="h-16 bg-surface/80 backdrop-blur-md border-b border-border flex items-center justify-between px-4 md:px-6 sticky top-0 z-10 w-full">

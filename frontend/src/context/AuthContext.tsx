@@ -71,13 +71,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { isAuth: false, email: null, role: null, avatar: null, complete: false, change: false, loginTime: null };
     }
 
+    const email = localStorage.getItem('auth_userEmail');
+    const emailClean = (email || '').toLowerCase().trim();
+    const storedAvatar = localStorage.getItem('auth_avatar') ||
+                         (emailClean ? localStorage.getItem(`user_avatar_${emailClean}`) : null) ||
+                         (emailClean.includes('superadmin') ? localStorage.getItem('user_avatar_superadmin') : null) ||
+                         localStorage.getItem('app_persistent_avatar');
+
     // Refresh timestamp
     localStorage.setItem('auth_timestamp', now.toString());
     return {
       isAuth: true,
-      email: localStorage.getItem('auth_userEmail'),
+      email: email,
       role: localStorage.getItem('auth_role') as 'admin' | 'superadmin',
-      avatar: localStorage.getItem('auth_avatar'),
+      avatar: storedAvatar,
       complete: localStorage.getItem('auth_profileComplete') === 'true',
       change: localStorage.getItem('auth_needsPasswordChange') === 'true',
       loginTime: loginTimeStr
@@ -307,9 +314,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nowLoginTime = new Date().toISOString();
-    const savedAvatar = localStorage.getItem('auth_avatar');
+    const emailClean = (email || '').toLowerCase().trim();
+    const savedAvatar = localStorage.getItem(`user_avatar_${emailClean}`) ||
+                        (emailClean.includes('superadmin') ? localStorage.getItem('user_avatar_superadmin') : null) ||
+                        localStorage.getItem('auth_avatar') ||
+                        localStorage.getItem('app_persistent_avatar');
     if (savedAvatar) {
       setAvatar(savedAvatar);
+      localStorage.setItem('auth_avatar', savedAvatar);
+      window.dispatchEvent(new Event('auth_avatar_changed'));
     }
     setIsAuthenticated(true);
     setUserEmail(email);
@@ -350,6 +363,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const updateAvatar = async (base64Image: string) => {
     setAvatar(base64Image);
     localStorage.setItem('auth_avatar', base64Image);
+    localStorage.setItem('app_persistent_avatar', base64Image);
+    const emailClean = (userEmail || localStorage.getItem('auth_userEmail') || '').toLowerCase().trim();
+    if (emailClean) {
+      localStorage.setItem(`user_avatar_${emailClean}`, base64Image);
+      if (emailClean.includes('superadmin')) {
+        localStorage.setItem('user_avatar_superadmin', base64Image);
+      }
+    } else {
+      localStorage.setItem('user_avatar_superadmin', base64Image);
+    }
     window.dispatchEvent(new Event('auth_avatar_changed'));
     if (userEmail) {
       try {
@@ -377,14 +400,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('auth_isAuthenticated');
     localStorage.removeItem('auth_userEmail');
     localStorage.removeItem('auth_role');
-    localStorage.removeItem('auth_avatar');
-    localStorage.removeItem('auth_profileComplete');
-    localStorage.removeItem('auth_needsPasswordChange');
-    localStorage.removeItem('auth_timestamp');
-    localStorage.removeItem('auth_loginTime');
+    // Note: Do NOT remove user_avatar_* or app_persistent_avatar so user's uploaded profile photo is preserved across re-logins!
     localStorage.removeItem('auth_token');
     localStorage.removeItem('access_token');
     localStorage.removeItem('authToken');
+    localStorage.removeItem('auth_timestamp');
+    localStorage.removeItem('auth_loginTime');
+    localStorage.removeItem('auth_profileComplete');
+    localStorage.removeItem('auth_needsPasswordChange');
 
     setIsAuthenticated(false);
     setUserEmail(null);
