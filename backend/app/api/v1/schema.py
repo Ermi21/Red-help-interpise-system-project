@@ -47,15 +47,15 @@ def _transform_and_normalize_url(raw_url: str) -> tuple[str, str | None]:
     match = re.search(r'db\.([a-z0-9]+)\.supabase\.co', url)
     if match:
         project_ref = match.group(1)
-        # Replace hostname with Singapore pooler host (AWS Singapore)
-        url = url.replace(f"db.{project_ref}.supabase.co:5432", f"aws-0-ap-southeast-1.pooler.supabase.com:6543")
-        url = url.replace(f"db.{project_ref}.supabase.co", f"aws-0-ap-southeast-1.pooler.supabase.com:6543")
+        pooler_region = "eu-west-2" if project_ref == "otgorwxdcrvbgclgjcgq" else "ap-southeast-1"
+        url = url.replace(f"db.{project_ref}.supabase.co:5432", f"aws-0-{pooler_region}.pooler.supabase.com:6543")
+        url = url.replace(f"db.{project_ref}.supabase.co", f"aws-0-{pooler_region}.pooler.supabase.com:6543")
 
         # In Supabase pooler, username must be postgres.<project_ref>
         if f"postgres.{project_ref}:" not in url:
             url = re.sub(r'://postgres:', f'://postgres.{project_ref}:', url)
 
-        note = "Automatically mapped Supabase direct host to IPv4 Singapore pooler (aws-0-ap-southeast-1.pooler.supabase.com:6543) with pooler tenant user."
+        note = f"Automatically mapped Supabase direct host to IPv4 {pooler_region} pooler (aws-0-{pooler_region}.pooler.supabase.com:6543) with pooler tenant user."
 
     # Normalize driver prefix for SQLAlchemy
     if url.startswith("postgres://"):

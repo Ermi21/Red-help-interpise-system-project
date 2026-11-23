@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bot, User, Send, Paperclip, FileText, Trash2, Plus, Search, MessageSquare, Menu, X, Pin, Edit2, Download, Loader2, Database, ShieldAlert, Shield, Server, Copy, Check, ArrowRight, Table, Share2, BarChart2, Zap, Lock } from 'lucide-react';
+import { Bot, User, Send, Paperclip, FileText, Trash2, Plus, Search, MessageSquare, Menu, X, Pin, Edit2, Download, Loader2, Database, ShieldAlert, Shield, Server, Copy, Check, ArrowRight, Table, Share2, BarChart2, Zap, Lock, Sparkles } from 'lucide-react';
 
 interface Message {
   id: number;
@@ -830,6 +830,21 @@ export default function AIChatInterface({ domain, title, description }: AIChatIn
                     </div>
                     <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
                   </button>
+                  <button 
+                    onClick={() => processUserMessage("Correlate all 3 systems: Database, Server, and Security health and threats")}
+                    className="col-span-1 sm:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-r from-red-950/40 via-surface to-surface border border-red-500/30 hover:border-red-500/60 rounded-xl text-left text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-semibold text-textPrimary group-hover:text-red-400 transition-colors">Unified 3-System AI Diagnostic</span>
+                        <p className="text-xs text-textSecondary">Correlate database performance, server compute, and security posture</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" />
+                  </button>
                 </div>
               </div>
             ) : (
@@ -889,6 +904,21 @@ export default function AIChatInterface({ domain, title, description }: AIChatIn
                       <span className="text-sm font-semibold text-textPrimary group-hover:text-primary transition-colors">Firewall &amp; Cyber Logs</span>
                     </div>
                     <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                  </button>
+                  <button 
+                    onClick={() => processUserMessage("Correlate all 3 systems: Database, Server, and Security health and threats")}
+                    className="col-span-1 sm:col-span-2 flex items-center justify-between p-3.5 bg-gradient-to-r from-red-950/40 via-surface to-surface border border-red-500/30 hover:border-red-500/60 rounded-xl text-left text-textSecondary hover:text-textPrimary transition-all duration-200 shadow-sm group"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-lg bg-red-600/20 border border-red-500/30 flex items-center justify-center text-red-400 group-hover:scale-105 transition-transform">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-sm font-semibold text-textPrimary group-hover:text-red-400 transition-colors">Unified 3-System AI Diagnostic</span>
+                        <p className="text-xs text-textSecondary">Correlate database performance, server compute, and security posture</p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-textSecondary group-hover:text-red-400 group-hover:translate-x-0.5 transition-all" />
                   </button>
                 </div>
               </div>

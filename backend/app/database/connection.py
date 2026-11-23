@@ -110,14 +110,16 @@ def get_target_engine() -> Engine:
         elif url.startswith("postgresql://") and not url.startswith("postgresql+"):
             url = url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-        # Automatically translate direct Supabase host (db.<ref>.supabase.co) to Singapore pooler
+        # Automatically translate direct Supabase host (db.<ref>.supabase.co) to regional pooler
         # Direct Supabase endpoints have no IPv4 DNS in Docker networks.
         import re
         match = re.search(r'db\.([a-z0-9]+)\.supabase\.co', url)
         if match:
             project_ref = match.group(1)
-            url = url.replace(f"db.{project_ref}.supabase.co:5432", f"aws-0-ap-southeast-1.pooler.supabase.com:6543")
-            url = url.replace(f"db.{project_ref}.supabase.co", f"aws-0-ap-southeast-1.pooler.supabase.com:6543")
+            # Route to project region (otgorwxdcrvbgclgjcgq is in eu-west-2 London)
+            pooler_region = "eu-west-2" if project_ref == "otgorwxdcrvbgclgjcgq" else "ap-southeast-1"
+            url = url.replace(f"db.{project_ref}.supabase.co:5432", f"aws-0-{pooler_region}.pooler.supabase.com:6543")
+            url = url.replace(f"db.{project_ref}.supabase.co", f"aws-0-{pooler_region}.pooler.supabase.com:6543")
             if f"postgres.{project_ref}:" not in url:
                 url = re.sub(r'://postgres:', f'://postgres.{project_ref}:', url)
 

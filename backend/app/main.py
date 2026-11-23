@@ -70,6 +70,14 @@ async def lifespan(app: FastAPI):
         get_vector_store()
         logger.info("%s starting up (env=%s)", settings.app_name, settings.app_env)
 
+        # Ensure 3-system vector knowledge base (Database, Server, Security) is seeded
+        try:
+            from app.embeddings.vector_store import VectorStoreManager
+            vsm = VectorStoreManager()
+            vsm.seed_3systems_knowledge(force=False)
+        except Exception as v_err:
+            logger.warning("Vector store 3-systems initial seeding notice: %s", v_err)
+
         # Seed a startup notification so the System Alerts page is never empty
         from app.database.connection import app_session
         from app.models.alert import Alert
