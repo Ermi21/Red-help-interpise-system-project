@@ -217,41 +217,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let needsChange = false;
     let authSuccess = false;
 
-    // 1. Authenticate against our FastAPI backend (/api/v1/auth/login)
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch('/api/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: email, password: password || '' }),
-        signal: controller.signal
-      });
-      clearTimeout(timer);
-      if (res.ok) {
-        const apiData = await res.json();
-        userRole = (email === 'superadmin@company.com' || email === 'superadmin@gmail.com' || apiData.user?.role === 'superadmin') ? 'superadmin' : (apiData.user?.role || 'admin');
-        authSuccess = true;
-        if (apiData.access_token) {
-          localStorage.setItem('access_token', apiData.access_token);
-          localStorage.setItem('auth_token', apiData.access_token);
-          localStorage.setItem('authToken', apiData.access_token);
+    // 1. Authenticate against our FastAPI backend with cloud cold-start resilience
+    const endpoints = [
+      '/api/v1/auth/login',
+      'https://red-help-interpise-system-project.onrender.com/api/v1/auth/login'
+    ];
+
+    let lastError: any = null;
+    let isCredentialError = false;
+
+    for (const endpoint of endpoints) {
+      if (authSuccess) break;
+      try {
+        const controller = new AbortController();
+        // Render free-tier cold starts can take 25-40s; allow 45s before aborting
+        const timer = setTimeout(() => controller.abort(), 45000);
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: email, password: password || '' }),
+          signal: controller.signal
+        });
+        clearTimeout(timer);
+
+        if (res.ok) {
+          const apiData = await res.json();
+          userRole = (email === 'superadmin@company.com' || email === 'superadmin@gmail.com' || apiData.user?.role === 'superadmin') ? 'superadmin' : (apiData.user?.role || 'admin');
+          authSuccess = true;
+          if (apiData.access_token) {
+            localStorage.setItem('access_token', apiData.access_token);
+            localStorage.setItem('auth_token', apiData.access_token);
+            localStorage.setItem('authToken', apiData.access_token);
+          }
+          break;
+        } else if (res.status === 401 || res.status === 400) {
+          isCredentialError = true;
+          const errJson = await res.json().catch(() => ({}));
+          throw new Error(errJson.message || 'Invalid username or password.');
+        } else if (res.status >= 500) {
+          lastError = new Error('Cloud backend server is warming up. Please wait a moment and try again.');
         }
-      } else if (res.status === 401 || res.status === 400) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || 'Invalid username or password.');
+      } catch (backendErr: any) {
+        if (isCredentialError || (backendErr?.message && (backendErr.message.includes('Invalid') || backendErr.message.includes('password')))) {
+          throw backendErr;
+        }
+        lastError = backendErr;
+        console.warn(`FastAPI backend attempt at ${endpoint} notice:`, backendErr);
       }
-    } catch (backendErr: any) {
-      if (backendErr?.message && (backendErr.message.includes('Invalid') || backendErr.message.includes('password'))) {
-        throw backendErr;
-      }
-      console.warn("FastAPI backend auth notice:", backendErr);
     }
 
-    // 2. No in-memory bypass — all auth goes through FastAPI backend
-
-    // 3. Try n8n backend PostgreSQL Auth Webhook if available
-    if (!authSuccess) {
+    // 2. Try n8n backend PostgreSQL Auth Webhook if available
+    if (!authSuccess && !isCredentialError) {
       try {
         const authUrl = import.meta.env.VITE_N8N_AUTH_URL;
         if (authUrl) {
@@ -279,6 +295,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!authSuccess) {
+      if (isCredentialError) {
+        throw new Error('Invalid email or password.');
+      }
+      if (lastError?.name === 'AbortError' || lastError?.message?.includes('Failed to fetch') || lastError?.message?.includes('NetworkError') || lastError?.message?.includes('warming up')) {
+        const netErr: any = new Error('Connecting to cloud server... The backend is waking up (cold start). Please click Sign In again.');
+        netErr.isColdStart = true;
+        throw netErr;
+      }
       throw new Error('Invalid email or password.');
     }
 

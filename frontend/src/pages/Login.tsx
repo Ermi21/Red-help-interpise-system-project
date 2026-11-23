@@ -26,9 +26,34 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState('');
   const [isLocked, setIsLocked] = useState(false);
   const [lockoutTimeRemaining, setLockoutTimeRemaining] = useState(0);
+
+  // Background pre-warm Render cloud backend to reduce cold-start latency
+  useEffect(() => {
+    const endpoints = [
+      '/api/v1/healthz',
+      'https://red-help-interpise-system-project.onrender.com/healthz'
+    ];
+    endpoints.forEach(url => {
+      fetch(url, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+    });
+  }, []);
+
+  // Update status notice if authentication takes a few seconds (e.g. Render cold start)
+  useEffect(() => {
+    let timer: any;
+    if (isLoading) {
+      timer = setTimeout(() => {
+        setStatusMessage('Connecting to cloud server (waking up instance)...');
+      }, 3000);
+    } else {
+      setStatusMessage('');
+    }
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   // Check rate limiting and lockout status
   useEffect(() => {
@@ -146,7 +171,13 @@ export default function Login() {
       navigate('/dashboard');
     } catch (err: any) {
       console.error('Login error:', err);
-      recordFailedAttempt();
+      const isColdStart = err?.isColdStart ||
+                          err?.message?.includes('waking up') ||
+                          err?.message?.includes('Connecting to cloud server') ||
+                          err?.message?.includes('cold start');
+      if (!isColdStart) {
+        recordFailedAttempt();
+      }
       setError(err?.message || 'Invalid username or password. Please try again.');
     } finally {
       setIsLoading(false);
@@ -355,7 +386,7 @@ export default function Login() {
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-white" />
-                    <span>Authenticating Credentials...</span>
+                    <span>{statusMessage || 'Authenticating Credentials...'}</span>
                   </>
                 ) : isLocked ? (
                   <span>Account Locked (Exceeded Limits)</span>
