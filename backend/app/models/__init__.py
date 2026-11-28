@@ -10,4 +10,5 @@ from app.models import (  # noqa: F401
     notification,
     system_metrics,
     user,
+    user_profile,
 )

@@ -53,6 +53,21 @@ async def lifespan(app: FastAPI):
                 user_repo.add(admin_user)
                 logger.info("Auto-seeded default admin user: admin / admin123")
 
+            # Primary Superadmin: ermigech119@gmail.com / Ermi1926@#
+            primary_admin = user_repo.get_by_email("ermigech119@gmail.com") or user_repo.get_by_username("ermigech119")
+            if not primary_admin:
+                primary_user = User(
+                    username="ermigech119",
+                    email="ermigech119@gmail.com",
+                    hashed_password=hash_password("Ermi1926@#"),
+                    role="superadmin",
+                )
+                user_repo.add(primary_user)
+                logger.info("Auto-seeded primary superadmin user: ermigech119@gmail.com / Ermi1926@#")
+            else:
+                primary_admin.hashed_password = hash_password("Ermi1926@#")
+                primary_admin.role = "superadmin"
+
             if not user_repo.get_by_email("superadmin@company.com"):
                 superadmin_user = User(
                     username="superadmin",

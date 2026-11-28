@@ -37,12 +37,12 @@ logger = logging.getLogger(__name__)
 # Retrieve configuration
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 ADMIN_PASSWORD = os.environ.get("BOT_ADMIN_PASSWORD", "admin123")
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
-BACKEND_USERNAME = os.environ.get("BACKEND_USERNAME", "admin")
+BACKEND_URL = os.environ.get("BACKEND_URL", "https://red-help-interpise-system-project.onrender.com")
+BACKEND_USERNAME = os.environ.get("BACKEND_USERNAME", "superadmin")
 BACKEND_PASSWORD = os.environ.get("BACKEND_PASSWORD", "admin123")
 
-# Your verified live URL
-WEB_APP_URL = "https://betel1221.github.io/redhelp-login/?v=6"
+# Live Vercel WebApp URL for Telegram Mini App
+WEB_APP_URL = os.environ.get("WEB_APP_URL", "https://red-help-interpise-system-project.vercel.app")
 
 if not TOKEN:
     logger.critical("Error: TELEGRAM_BOT_TOKEN environment variable not set.")

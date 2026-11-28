@@ -153,7 +153,7 @@ export default function Login() {
       // Save user object and tokens in storage
       const token = localStorage.getItem('access_token') || localStorage.getItem('authToken') || '';
       const userEmail = formData.username.trim();
-      const userRole = (userEmail === 'superadmin@company.com' || userEmail === 'admin') ? 'superadmin' : 'admin';
+      const userRole = (userEmail === 'ermigech119@gmail.com' || userEmail === 'superadmin@company.com' || userEmail === 'admin' || userEmail === 'ermigech119') ? 'superadmin' : 'admin';
       const userObj = {
         username: userEmail.split('@')[0],
         email: userEmail.includes('@') ? userEmail : '',

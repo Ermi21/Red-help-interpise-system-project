@@ -189,10 +189,22 @@ def get_app_engine() -> Engine:
         settings = get_settings()
         app_url = settings.app_db_url
         
-        # Phase 2: Connection pooling for app database too
+        # In cloud environments (Render, containers) without an active localhost Postgres,
+        # fallback to SQLite if connection to localhost fails or cannot be reached.
         engine_kwargs = {"pool_pre_ping": True}
         connect_args = {}
         
+        is_localhost_pg = ("@localhost" in app_url or "@127.0.0.1" in app_url) and app_url.startswith("postgres")
+        if is_localhost_pg:
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(0.3)
+            result = sock.connect_ex(('127.0.0.1', 5432))
+            sock.close()
+            if result != 0:
+                logger.warning("Localhost PostgreSQL (5432) is not listening. Falling back to local SQLite app database.")
+                app_url = "sqlite:///./app_backend.db"
+
         if app_url.startswith("sqlite"):
             connect_args["check_same_thread"] = False
             engine_kwargs["connect_args"] = connect_args
@@ -204,9 +216,19 @@ def get_app_engine() -> Engine:
             engine_kwargs["pool_recycle"] = 1800
             engine_kwargs["pool_timeout"] = 5
             
-        _app_engine = create_engine(app_url, **engine_kwargs)
+        try:
+            _app_engine = create_engine(app_url, **engine_kwargs)
+            # Verify connectivity
+            with _app_engine.connect() as conn:
+                pass
+        except Exception as exc:
+            logger.warning("Primary app DB (%s) failed connection (%s). Falling back to SQLite.", app_url, exc)
+            app_url = "sqlite:///./app_backend.db"
+            _app_engine = create_engine(app_url, connect_args={"check_same_thread": False}, poolclass=NullPool)
+
         _AppSession = sessionmaker(bind=_app_engine, autoflush=False, autocommit=False)
-        logger.info("Application database engine initialized with connection pooling")
+        safe_display = app_url.split('@')[-1] if '@' in app_url else app_url
+        logger.info("Application database engine initialized (%s)", safe_display)
     return _app_engine
 
 
